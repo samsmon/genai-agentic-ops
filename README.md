@@ -51,8 +51,8 @@ Bootstrap detects existing rule files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.
 
 Tested with: **Gemini/Antigravity** and **Claude Code**.
 
-- Three of my own repos use it or a direct precursor: a multi-device homelab repo (about 400 commits, root-level ops log with locks, rules evolved there first), a portfolio site, and a cloud-ops repo.
-- v1 Bootstrap was run on the portfolio and cloud-ops repos on 2026-10-03. In cloud-ops, Gemini wrote the log row and merged the rules block without overwriting the existing `AGENTS.md`; the portfolio log has rows from both Claude Code and Gemini.
+- Three of my own repos use it: a multi-device homelab repo (about 400 commits, where the rules evolved first as a root-level ops log with locks), a portfolio site, and a cloud-ops repo.
+- v1 was applied on 2026-10-03 to all three. Cloud-ops and portfolio were bootstrapped by Gemini (rules block merged without overwriting the existing `AGENTS.md`); the homelab repo was done by Claude Code, writing the block into `CLAUDE.md` because its `AGENTS.md` is a symlink to it. The portfolio log has rows from both Claude Code and Gemini.
 - The earlier, looser form of these rules (before v1) was applied in cloud-ops the same day through a series of Gemini commits.
 
 Limits you should know about:
