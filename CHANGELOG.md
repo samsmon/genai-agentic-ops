@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.0.0 - unreleased (date and SHA are filled in when committed)
+## v2.0.0 - 2026-10-22 (pin: `5baef69cde25b196ad2c0cb19fc9595fa50e80ab`)
 - `RULES.md` marker version `v1` -> `v2`. The v1 file and its SHA pin stay valid for projects that remain on v1.
 - Bootstrap now asks for a git policy (`user-only-git` or `agent-commits`) and which kit modules to install. Rules block gets sections 9 (git policy, snippet B1/B2), 10 (token discipline), 11 (enforcement, honest about what is text), 12 (harness builder). Optional handoff section 13 (snippet B3).
 - Ops log: keep at most 5 finished rows in the main table, rotate older ones to `docs/CURRENT_OPS-archive.md` (not read at session start). Part C adds the archive template. Rule 3 no longer says to commit rows itself; that follows the git policy.

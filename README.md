@@ -37,11 +37,11 @@ Parallel agents have no shared memory. In practice that means:
 Pin the URL to a commit SHA, not `main`, so the rules only change when you choose.
 
 ```
-Read https://raw.githubusercontent.com/samsmon/genai-agentic-ops/<SHA-V2>/RULES.md and run Part A (Bootstrap) for this project.
+Read https://raw.githubusercontent.com/samsmon/genai-agentic-ops/5baef69cde25b196ad2c0cb19fc9595fa50e80ab/RULES.md and run Part A (Bootstrap) for this project.
 Analyze first and show me the plan; write nothing until I approve.
 ```
 
-`<SHA-V2>` is a placeholder: fill it with the commit SHA of the v2 release after it is committed and pushed. Until then the last published pin is the v1 one, `e6061fec3e4388efd73d2b0e62525972e3f1acc1` (v1 rules, no kit).
+The v1 pin, `e6061fec3e4388efd73d2b0e62525972e3f1acc1` (v1 rules, no kit), stays valid for projects that remain on v1.
 
 Bootstrap detects existing rule files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`), merges instead of overwriting, wraps the rules in `BEGIN/END genai-agentic-ops` markers so they can be updated later, asks which git policy you want and which kit modules to install, and asks whether to keep, move or merge an existing ops log.
 
