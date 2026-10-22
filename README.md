@@ -39,7 +39,7 @@ Parallel agents have no shared memory. In practice that means:
 Pin the URL to a commit SHA, not `main`, so the rules only change when you choose.
 
 ```
-Read https://raw.githubusercontent.com/samsmon/genai-agentic-ops/5baef69cde25b196ad2c0cb19fc9595fa50e80ab/RULES.md and run Part A (Bootstrap) for this project.
+Read https://raw.githubusercontent.com/samsmon/genai-agentic-ops/bb594df1a2e18a143cc55e911872a0cb33cc8312/RULES.md and run Part A (Bootstrap) for this project.
 Analyze first and show me the plan; write nothing until I approve.
 ```
 
