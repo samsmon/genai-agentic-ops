@@ -1,0 +1,12 @@
+#!/bin/sh
+# Automatic check without a model; silent when it passes. Enable once per clone:
+#   git config core.hooksPath .githooks
+dir=scripts/agentic-ops
+list=$(mktemp)
+trap 'rm -f "$list"' EXIT
+git -c core.quotepath=off diff --cached --name-only > "$list"
+if [ -f "$dir/precommit-check.sh" ]; then
+  sh "$dir/precommit-check.sh" --staged-file "$list"
+elif [ -f "$dir/precommit-check.ps1" ] && command -v powershell >/dev/null 2>&1; then
+  powershell -NoProfile -ExecutionPolicy Bypass -File "$dir/precommit-check.ps1" -StagedFile "$list"
+fi

@@ -1,0 +1,17 @@
+#!/bin/sh
+# Reject agent attribution in commit messages and agent/bot identities.
+# Applies to every agent. Exception only on the user's say-so: ALLOW_AGENT_TRAILER=1 git commit ...
+[ "$ALLOW_AGENT_TRAILER" = "1" ] && exit 0
+msg="$1"
+if grep -Eiq '^(co-authored-by|signed-off-by|generated-by):|generated with|🤖' "$msg"; then
+  echo "COMMIT REJECTED: message carries an agent attribution line (Co-Authored-By, Signed-off-by, Generated with)." >&2
+  echo "Remove that line and commit again." >&2
+  exit 1
+fi
+ident="$(git var GIT_AUTHOR_IDENT 2>/dev/null) $(git var GIT_COMMITTER_IDENT 2>/dev/null)"
+if printf '%s' "$ident" | grep -Eiq 'anthropic|claude|gemini|antigravity|codex|openai|\[bot\]'; then
+  echo "COMMIT REJECTED: author/committer identity looks like an agent or bot: $ident" >&2
+  echo "The commit identity must be the user's (git config user.name / user.email on this device)." >&2
+  exit 1
+fi
+exit 0
