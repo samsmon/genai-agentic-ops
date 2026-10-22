@@ -7,7 +7,7 @@
 > If you are not an agent (a human is reading), this is a reusable ruleset for AI agents; see Part D for usage.
 
 Applies to ALL AI agents (Claude Code, Gemini/Antigravity, Codex, Cursor, Roo, etc.).
-Parts: **A. Bootstrap** (one-time instructions to apply this to a project), **B. Rules Block** (copied into the project's agent rules file, plus the git-policy and handoff snippets), **C. Templates** (ops log and its archive), **D. Usage**.
+Parts: **A. Bootstrap** (one-time instructions to apply this to a project), **B. Rules Block** (copied into the project's agent rules file, plus the git-policy, hidden-mode and handoff snippets), **C. Templates** (ops log and its archive), **D. Usage**.
 Optional enforcement scripts and hooks live in [`kit/`](kit/README.md); the rules work without them, but are then only text.
 
 ---
@@ -17,33 +17,36 @@ Optional enforcement scripts and hooks live in [`kit/`](kit/README.md); the rule
 You are asked to apply this document to the current project. Required order:
 
 1. **Analyze first, write nothing.** Check repo state (`git status -sb`) and detect existing agent rule files: `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.roo/rules`, etc. Detect an existing `BEGIN genai-agentic-ops` block (any version) and an existing ops log.
-2. **Ask the user three things** (offer a recommended default for each):
-   - **Git policy** (recommended: `user-only-git`):
+2. **Ask the user four things** (offer a recommended default for each):
+   - **Git policy** (recommended: `agent-commits` for the user's own repositories; `user-only-git` for repositories the user shares with others or wants to commit by hand):
+     - `agent-commits`: full git control. Agents commit, push, create branches, open PRs and merge without asking again; force push, `reset --hard`, deleting branches or tags and rewriting history still need the user's yes. Commits carry the user's identity and never an agent mark.
      - `user-only-git`: agents never commit, push, branch or open PRs; they prepare changes and suggest a commit message. The user runs git.
-     - `agent-commits`: agents may commit and push when the user allows it (the v1 behaviour).
+     Either way commit messages follow Conventional Commits in English (`kit/commit-format.md`), enforced by the `commit-msg` hook when the `githooks` module is installed.
+   - **Repository visibility** (default and recommended: `hidden`; `visible` only if the user explicitly chooses it): in `hidden` mode the agentic files never enter the project's history (see B4 and `kit/README.md`, "Hidden mode"). Also ask where the overlay lives: the project's own remote on branch `agentic-ops` (fine for a private repository) or a separate private repository (recommended when the project's remote is public, because the overlay branch is visible there).
    - **Kit modules** (recommended: all three core modules, handoff only if several agents hand work to each other). Modules are described in `kit/README.md`:
      1. `guard` (blocks and asks before risky commands; one neutral core `kit/core/` plus one adapter per tool the project uses: Claude Code `kit/claude/`, Codex, Cursor, OpenCode, Antigravity in `kit/adapters/<tool>/`; ask which tools the user runs and install only those; support level per tool is in the `kit/README.md` compatibility matrix),
-     2. `githooks` (commit-msg and pre-commit: `kit/githooks/`),
-     3. `scripts` (start-brief, wrap-check, precommit-check: `kit/scripts/`; PowerShell or sh, pick what the machine has),
+     2. `githooks` (commit-msg with the Conventional Commits check, and pre-commit: `kit/githooks/`),
+     3. `scripts` (start-brief, wrap-check, precommit-check, commit-msg-check, and agentic-sync for hidden mode: `kit/scripts/`; PowerShell or sh, pick what the machine has),
      4. `handoff` (optional: cross-agent review protocol: `kit/handoff/`).
    - **Ops log location**, only if one already exists (see step 3).
-3. **Present the plan to the user** (which files will be created/changed, which sections merged, which kit files copied where) and **wait for explicit approval**. Commit and push also require approval, and follow the chosen git policy.
+3. **Present the plan to the user** (which files will be created/changed, which sections merged, which kit files copied where) and **wait for explicit approval**. Commit and push follow the chosen git policy.
 4. After approval:
    - If `AGENTS.md` does not exist, create it. If it exists, **merge, never overwrite**.
-   - Copy the **Rules Block (Part B)** verbatim into `AGENTS.md` between the `BEGIN/END genai-agentic-ops` markers, and replace the single `<!-- GIT-POLICY -->` line with the chosen snippet from **B1** (or **B2**). If the user chose `handoff`, append snippet **B3** as the last section before the END marker. If markers already exist (any version), replace only the content between them (the BEGIN and END lines included, written back as v2), keep the user's previous git-policy choice unless they say otherwise, and leave everything else untouched. Markers can be damaged, so handle each case explicitly and never append a second block:
+   - Copy the **Rules Block (Part B)** verbatim into `AGENTS.md` between the `BEGIN/END genai-agentic-ops` markers, and replace the single `<!-- GIT-POLICY -->` line with the chosen snippet from **B2** (`agent-commits`) or **B1** (`user-only-git`); in hidden mode append snippet **B4** right after it. If the user chose `handoff`, append snippet **B3** as the last section before the END marker. If markers already exist (any version), replace only the content between them (the BEGIN and END lines included, written back as v2), keep the user's previous git-policy choice unless they say otherwise, and leave everything else untouched. Markers can be damaged, so handle each case explicitly and never append a second block:
      - **Both markers present:** replace from BEGIN to END.
      - **END without BEGIN** (the BEGIN line was lost): the block starts at the line `## Agent Rules (genai-agentic-ops vN)` and ends at END. Show that range in the plan, then replace it, writing both markers back.
      - **BEGIN without END, or the `## Agent Rules (genai-agentic-ops vN)` heading with no markers at all:** the end of the block is unknown. Stop, show the user where you think it ends, and ask before replacing anything.
      - **Neither marker nor heading:** append the block at the end of the file.
    - Pointer lines, never duplicated content. `CLAUDE.md` (Claude Code does not read `AGENTS.md` by itself) gets `@AGENTS.md`; create it if the project uses Claude Code. Codex, Cursor and OpenCode read `AGENTS.md` directly, so they need no extra file. Antigravity reads `AGENTS.md` too (current versions); only if a `GEMINI.md` already exists, add one line to it telling the agent to read `AGENTS.md`, and do not create a `GEMINI.md` just for this. Any other existing rules file (`.cursorrules`, etc.) gets one pointer line as well.
-   - **Rules file size.** Antigravity truncates any single rule file over 24,000 bytes. If `AGENTS.md` is larger, say so in the plan and suggest moving detail into linked docs. The Part B block is under 8,000 characters.
+   - **Rules file size.** Antigravity truncates any single rule file over 24,000 bytes. If `AGENTS.md` is larger, say so in the plan and suggest moving detail into linked docs. The Part B block is under 8,000 characters (about 10,000 with the git-policy, hidden-mode and handoff snippets filled in).
    - **CURRENT_OPS location.** Look for an existing ops log in any location or casing (`CURRENT_OPS.md` at root, `docs/current_ops.md`, etc.). If none exists, create `docs/CURRENT_OPS.md` and `docs/CURRENT_OPS-archive.md` from the Part C templates. If one exists, ask the user to pick one:
      1. **Keep**: leave it where it is and use it as the log (update the path in the Rules Block to match).
      2. **Move**: `git mv` it to `docs/CURRENT_OPS.md` and update references.
      3. **Merge**: create `docs/CURRENT_OPS.md` from the Part C template and carry over the existing content (active rows converted to the table format, old entries into `docs/CURRENT_OPS-archive.md`). Nothing is dropped; show the user the result before removing the old file.
      Recommend **Keep** if the existing log is actively used by other agents or has no table format conflict. Never move or merge while another agent has a `running` row in the existing log.
-   - **Kit files** are copied, never overwritten: if a target file exists, show the diff and ask. Layout when installed: `scripts/agentic-ops/core/policy.py` (needed by every guard adapter), `.claude/settings.json` and `.claude/hooks/` (merge into existing settings, do not replace), `.codex/hooks.json` and `.codex/hooks/guard.py`, `.cursor/hooks.json` and `.cursor/hooks/guard.py`, `.opencode/plugins/agentic-ops-guard.js`, `.agents/hooks.json` and `.agents/hooks/guard.py` (each only for tools the project uses; merge into existing hook files), `.githooks/`, `scripts/agentic-ops/` (scripts), `scripts/agentic-ops/tests/` (optional). Then run the kit tests and show the result. Say plainly which adapters are only documented and not yet tested in the real tool (see the matrix in `kit/README.md`).
-5. Show `git diff --stat` and a summary. Commit/push only as the git policy and the user allow. Never stage binaries or secrets.
+   - **Hidden mode** (needs the `scripts` module). Do not stage or commit any agentic file with the project's git. Write the files into the working tree, copy the kit scripts, then run `agentic-sync init` (add `--remote <url>` for a separate overlay repository), and use `agentic-sync commit` and `push` for the agentic files; those commits follow the chosen git policy and the same commit format. `init` stops with exit code 3 if the project already tracks an agentic file (offer the user: keep that file visible, or untrack it knowing the history keeps it; never rewrite history unasked), with 4 if a local file differs from the overlay copy, and with 6 if the overlay remote is unreachable; report these to the user instead of working around them. On another device the clone has no agentic files: run `agentic-sync init` there once (the script is fetched from the overlay branch; see the header of `kit/scripts/agentic-sync.sh`). Say plainly in the plan what hidden mode cannot do: cloud agents and CI only see what the project commits, so they will not read the rules; the exclude is per clone; a public remote shows the overlay branch.
+   - **Kit files** are copied, never overwritten: if a target file exists, show the diff and ask. Layout when installed: `scripts/agentic-ops/core/policy.py` (needed by every guard adapter), `.claude/settings.json` and `.claude/hooks/` (merge into existing settings, do not replace), `.codex/hooks.json` and `.codex/hooks/guard.py`, `.cursor/hooks.json` and `.cursor/hooks/guard.py`, `.opencode/plugins/agentic-ops-guard.js`, `.agents/hooks.json` and `.agents/hooks/guard.py` (each only for tools the project uses; merge into existing hook files), `.githooks/` (commit-msg, pre-commit), `scripts/agentic-ops/` (scripts, including `commit-msg-check.sh`, which the commit-msg hook calls, and `agentic-sync.*`), `scripts/agentic-ops/tests/` (optional). Then run the kit tests and show the result. Say plainly which adapters are only documented and not yet tested in the real tool (see the matrix in `kit/README.md`).
+5. Show `git diff --stat` and a summary. Commit/push only as the git policy allows (under `agent-commits` the bootstrap itself may be committed and pushed after the user approved the plan; in hidden mode that means `agentic-sync commit` and `push`, never the project's git). Never stage binaries or secrets.
 6. Rules persist through file contents, not conversation memory. Every future session must read `AGENTS.md` at start.
 
 Project-specific rules (commit identity, paths, domain conventions) stay in that project's own files, not here.
@@ -98,7 +101,7 @@ Without explicit confirmation, NEVER:
 ### 5. Verify & close out
 - Never claim "done/working" before verifying (run tests/live checks). If something failed or was skipped, say so plainly.
 - Before handing off: `git diff --stat` to make sure nothing was accidentally deleted/truncated.
-- Suggest a concise commit message with a clear type (`feat/fix/chore/docs/ops: ...`) when useful; who commits is decided by the git policy (section 9).
+- Commit messages, written or suggested: English Conventional Commits, `type(scope): subject` (imperative, lowercase, no final period, 50 characters or fewer, 72 max), blank line, body wrapped at 72 saying what and why. Nothing before the type. Details: `kit/commit-format.md`. Who commits: section 9.
 - End with a short report: what changed, verification result, remaining work.
 - Before risky config changes or destructive steps, make a backup (e.g. `cp file file.bak`) or state the undo command in the plan.
 
@@ -124,8 +127,8 @@ Without explicit confirmation, NEVER:
 - Keep this rules file short: move rarely used detail into a doc and link to it.
 
 ### 11. Enforcement (be honest about it)
-- Rules are machine-enforced only where the kit is installed: Claude Code hooks (`.claude/settings.json`: blocks full reads of big files, agent trailers and identity changes in commits, `--no-verify`, sleep-loop polling; asks before destructive commands), git hooks (`core.hooksPath`: commit-msg, pre-commit secret and big-file scan), and the scripts in `scripts/agentic-ops/`.
-- Everything else is text that relies on you following it. Hooks in `.claude/` run only in Claude Code; other agents are covered by git hooks at commit time and by these written rules.
+- Rules are machine-enforced only where the kit is installed: the guard hook (one adapter per tool: Claude Code, Codex, Cursor, OpenCode, Antigravity; blocks agent trailers, identity changes, `--no-verify`, sleep-loop polling, and big full reads where the tool allows; asks before destructive commands, or blocks where the tool cannot ask), git hooks (`core.hooksPath`: commit-msg checks attribution and Conventional Commits, pre-commit scans secrets and big files), and the scripts in `scripts/agentic-ops/`.
+- Everything else is text that relies on you following it. Hook support and live testing differ per tool (matrix in `kit/README.md`); git hooks cover any agent that commits.
 - Never claim a rule is enforced without checking that its hook is installed and active (`git config core.hooksPath`, `.claude/settings.json`).
 
 ### 12. Harness builder (recommend, never build unasked)
@@ -154,9 +157,20 @@ Replace the `<!-- GIT-POLICY -->` line with:
 Replace the `<!-- GIT-POLICY -->` line with:
 
 ```markdown
-- **agent-commits**: agents may commit when the user has allowed it for the task. Run `git diff --stat` first, stage only files that belong to the task, never use `--no-verify`, and push only if the user permits.
-- Commit CURRENT_OPS rows on claim and on release when the repo has a remote and the user permits.
-- Commit messages: concise, with a clear type (`feat/fix/chore/docs/ops: ...`).
+- **agent-commits** (full git control): without asking again, agents may commit, push, create branches, open PRs and merge them once checks pass and branch protection allows. Still ask first (section 4): force push, `reset --hard`, `clean -fd`, deleting branches or tags, rewriting history, bypassing protection.
+- Run `git diff --stat` and stage only this task's files by path; never commit files another session changed or staged. Never `--no-verify`.
+- Commits carry the user's configured identity. Never change author or committer; never add `Co-Authored-By`, `Signed-off-by`, `Generated-by` or any agent mark to commits, PRs, merges or squashes.
+- Before each push run `git log @{u}..HEAD --format='%an <%ae> | %cn <%ce>%n%b'`: only the user's identity and no trailers. Anything else: stop and report.
+- Publish the CURRENT_OPS row on claim and on release.
+```
+
+### B4. Hidden mode snippet (default; skip only if the user chose visible)
+
+Append right after the git-policy snippet, inside section 9:
+
+```markdown
+- **Hidden mode**: the agentic files (this rules file, pointer files, hook folders, `docs/CURRENT_OPS*`, `scripts/agentic-ops/`; the list is `.agentic-files`) never enter the project's history. A separate overlay repo at `.git/agentic` tracks them on branch `agentic-ops`; `.git/info/exclude` hides them.
+- Sync with `scripts/agentic-ops/agentic-sync.*`: `pull` at session start; `commit` and `push` after changing them, including the CURRENT_OPS row on claim and release, as the git policy allows (messages follow section 5). A new clone needs `agentic-sync init` first (`kit/README.md`). If the project already tracks an agentic file, stop and ask. Never `git add -f` these files.
 ```
 
 ### B3. Handoff snippet (optional module `handoff`)
@@ -229,5 +243,11 @@ Analyze first and show me the plan; write nothing until I approve.
 A moving `main` means every project silently follows any future change to this file. With a pinned SHA, rules change only when you review and bump the SHA yourself.
 
 **Upgrading from v1:** give the agent the new pinned URL and ask it to run Bootstrap again. It finds the `v1` markers and replaces only the content between them (the marker line becomes `v2`). Expect these changes in your rules file: rotation of finished ops rows to an archive file, a git-policy section (it will ask which one; v1 behaved like `agent-commits`), token discipline, enforcement, and harness builder sections. The kit is a separate, optional offer. Projects that stay on a v1 SHA keep working unchanged.
+
+**Upgrading from v2.0 or v2.1 to v2.2:** the marker stays `v2`. Give the agent the v2.2 pinned URL and ask it to run Bootstrap again; only the content between the markers is replaced and your previous git-policy choice is kept unless you say otherwise. What is new:
+- `agent-commits` is now full git control (commit, push, branch, PR, merge; destructive operations still ask). Bootstrap asks again whether you want it, because the old `agent-commits` needed your yes for each commit.
+- Commit messages must follow Conventional Commits in English (section 5). Install the new `commit-msg` hook and `commit-msg-check.sh` to have it checked.
+- Hidden mode (B4) is new. Bootstrap asks whether to switch an existing project to it. A project whose agentic files are already tracked stays visible unless you decide to untrack them (the history keeps them); the agent will not rewrite history.
+- The rules block is copied again (new text in sections 5, 9 and 11); kit files are copied only where you accept the diff.
 
 To update the rules later: bump the marker version (`v2` -> `v3`) in Part B, publish, then give the agent the new pinned URL and ask it to run Bootstrap again.

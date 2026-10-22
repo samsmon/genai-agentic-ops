@@ -70,6 +70,21 @@ else
   fi
 fi
 
+# 3b. hidden mode: the agentic files live in the overlay repository
+gc=$(git -C "$ROOT" rev-parse --git-common-dir 2>/dev/null)
+case $gc in /*|?:*) ;; *) gc="$ROOT/$gc" ;; esac
+if [ -n "$gc" ] && [ -d "$gc/agentic" ] && [ -f "$HERE/agentic-sync.sh" ]; then
+  line=$(cd "$ROOT" && sh "$HERE/agentic-sync.sh" status --brief 2>&1 | head -1)
+  unc=$(printf '%s' "$line" | sed -n 's/.*uncommitted=\([0-9]*\).*/\1/p'); ah=$(printf '%s' "$line" | sed -n 's/.*ahead=\([0-9]*\).*/\1/p')
+  unc=${unc:-0}; ah=${ah:-0}
+  if [ "$POLICY" = user-only-git ]; then ok "OVERLAY: user-only-git, $unc uncommitted and $ah unpushed agentic change(s) are for the user to sync"
+  elif [ "$unc" -gt 0 ]; then no "OVERLAY: $unc agentic file(s) not committed (agentic-sync commit, then push)"
+  elif ! git --git-dir="$gc/agentic" config --get remote.agentic.url >/dev/null 2>&1; then ok 'OVERLAY: committed (no overlay remote, local only)'
+  elif [ "$ah" -gt 0 ]; then no "OVERLAY: $ah overlay commit(s) not pushed (agentic-sync push)"
+  else ok 'OVERLAY: clean and pushed'
+  fi
+fi
+
 # 4. optional handoff module
 if [ -f "$HERE/handoff-check.sh" ]; then
   out=$(sh "$HERE/handoff-check.sh" --root "$ROOT" --agent "$AGENT" --today "$TODAY")

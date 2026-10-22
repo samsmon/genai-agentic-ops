@@ -6,6 +6,10 @@ for t in "$here"/test_*.py; do
   [ -f "$t" ] || continue
   if python3 -I "$t" >/dev/null 2>&1 || python -I "$t" >/dev/null 2>&1; then echo "OK     $(basename "$t" .py)"; else echo "FAIL   $(basename "$t" .py)"; bad=$((bad + 1)); fi
 done
-if bash "$here/scripts.tests.sh" >/dev/null 2>&1; then echo 'OK     scripts.tests.sh'; else echo 'FAIL   scripts.tests.sh (run it directly for details)'; bad=$((bad + 1)); fi
+for t in "$here"/*.tests.sh; do
+  [ -f "$t" ] || continue
+  n=$(basename "$t")
+  if bash "$t" >/dev/null 2>&1; then echo "OK     $n"; else echo "FAIL   $n (run it directly for details)"; bad=$((bad + 1)); fi
+done
 echo "[TESTS] $bad suite(s) failed"
 [ "$bad" -eq 0 ]

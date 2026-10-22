@@ -1,5 +1,5 @@
 # Session start summary (read-only). Does not write, pull or summarize.
-# Output sections: [GIT] sync, [OPS] running/blocked rows, [STATE] optional state file, [HOOK].
+# Output sections: [GIT] sync, [OPS] running/blocked rows, [STATE] optional state file, [OVERLAY] hidden mode, [HOOK].
 # Exit 2 (or a STOP: line) means stop and report to the user.
 param(
   [string]$Root = '',
@@ -76,6 +76,20 @@ $rulesPath = Join-Path $Root 'AGENTS.md'
 if ((Test-Path -LiteralPath $rulesPath) -and ((Get-Item -LiteralPath $rulesPath).Length -gt 24000)) {
   Write-Output '[RULES]'
   Write-Output "WARNING: AGENTS.md is $((Get-Item -LiteralPath $rulesPath).Length) B. Antigravity truncates any single rule file over 24,000 bytes; trim it or move detail into linked docs."
+}
+
+# hidden mode: agentic files are tracked by the overlay repository, not the project (read-only, no network)
+$gc = & git -C $Root rev-parse --git-common-dir 2>$null
+if ($gc) {
+  if (-not [IO.Path]::IsPathRooted($gc)) { $gc = Join-Path $Root $gc }
+  $syncPs1 = Join-Path $PSScriptRoot 'agentic-sync.ps1'
+  if ((Test-Path -LiteralPath (Join-Path $gc 'agentic')) -and (Test-Path -LiteralPath $syncPs1)) {
+    Write-Output '[OVERLAY]'
+    Push-Location -LiteralPath $Root
+    & powershell -NoProfile -File $syncPs1 status -Brief 2>&1 | ForEach-Object { Write-Output "$_" }
+    Pop-Location
+    Write-Output '(run agentic-sync pull to fetch newer agentic files)'
+  }
 }
 
 Write-Output '[HOOK]'

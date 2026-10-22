@@ -22,9 +22,11 @@ foreach ($c in $cands) {
     if ("$probe".Trim() -eq 'ok') { $bash = $c; break }
   }
 }
-if ($bash) {
-  $o = & $bash (Join-Path $PSScriptRoot 'scripts.tests.sh') 2>&1
-  if ($LASTEXITCODE -eq 0) { Write-Output 'OK     scripts.tests.sh' } else { Write-Output 'FAIL   scripts.tests.sh'; ($o | Where-Object { $_ -match '^FAIL' }) | ForEach-Object { Write-Output "         $_" }; $bad++ }
-} else { Write-Output 'SKIP   scripts.tests.sh (bash not found)' }
+foreach ($f in (Get-ChildItem -LiteralPath $PSScriptRoot -Filter *.tests.sh | Sort-Object Name)) {
+  if ($bash) {
+    $o = & $bash $f.FullName 2>&1
+    if ($LASTEXITCODE -eq 0) { Write-Output "OK     $($f.Name)" } else { Write-Output "FAIL   $($f.Name)"; ($o | Where-Object { $_ -match '^FAIL' }) | ForEach-Object { Write-Output "         $_" }; $bad++ }
+  } else { Write-Output "SKIP   $($f.Name) (bash not found)" }
+}
 Write-Output "[TESTS] $bad suite(s) failed"
 if ($bad -gt 0) { exit 1 } else { exit 0 }

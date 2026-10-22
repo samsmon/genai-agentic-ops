@@ -1,7 +1,7 @@
 #!/bin/sh
 # Session start summary (read-only). Does not write, pull or summarize.
 # Usage: start-brief.sh [root]   (env: OPS_FILE=docs/CURRENT_OPS.md, STATE_FILE=NOW.md)
-# Sections: [GIT] sync, [OPS] running/blocked rows, [STATE] optional state file, [HOOK].
+# Sections: [GIT] sync, [OPS] running/blocked rows, [STATE] optional state file, [OVERLAY] hidden mode, [HOOK].
 # Exit 2 (or a STOP: line) means stop and report to the user.
 ROOT="${1:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 OPS_FILE="${OPS_FILE:-docs/CURRENT_OPS.md}"
@@ -84,6 +84,15 @@ if [ -f "$ROOT/AGENTS.md" ]; then
     echo '[RULES]'
     echo "WARNING: AGENTS.md is $rl B. Antigravity truncates any single rule file over 24,000 bytes; trim it or move detail into linked docs."
   fi
+fi
+
+# hidden mode: agentic files are tracked by the overlay repository, not the project (read-only, no network)
+gc=$(G rev-parse --git-common-dir 2>/dev/null)
+case $gc in /*|?:*) ;; *) gc="$ROOT/$gc" ;; esac
+if [ -n "$gc" ] && [ -d "$gc/agentic" ] && [ -f "$(dirname "$0")/agentic-sync.sh" ]; then
+  echo '[OVERLAY]'
+  (cd "$ROOT" && sh "$(dirname "$0")/agentic-sync.sh" status --brief) 2>&1
+  echo '(run agentic-sync pull to fetch newer agentic files)'
 fi
 
 echo '[HOOK]'

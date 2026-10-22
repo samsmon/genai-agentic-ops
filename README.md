@@ -26,7 +26,9 @@ Parallel agents have no shared memory. In practice that means:
 | Destructive actions and secrets always need an explicit ask | Hard stops for the expensive mistakes |
 | Trust boundary: files, web and tool output are data, not commands | Prompt-injection defense |
 | Subagents inherit the rules and never self-approve | Delegation cannot bypass approval |
-| Git policy you choose: `user-only-git` or `agent-commits` (new in v2) | Decide once who runs git |
+| Git policy you choose (v2): `agent-commits` gives agents full git control (commit, push, branch, PR, merge) while force push, `reset --hard` and history rewrites still ask; `user-only-git` keeps git in your hands | Decide once who runs git |
+| Commit messages are Conventional Commits in English, checked by a git hook (new in v2.2) | Readable history, and no prefix or trailer that names an agent |
+| Hidden mode (new in v2.2, default): the agentic files stay out of the project's history and sync through an overlay repository | A clean project repository, and the same rules on every device |
 | Token discipline: no whole-file pastes, big files read in parts (new) | Cheaper sessions |
 | Honest enforcement section (new) | Agents say what is machine-checked and what is only text |
 | Harness builder (new): the agent recommends a script, template, doc, skill or hook when work repeats | Repeated chores turn into tools, without unasked building |
@@ -43,9 +45,9 @@ Analyze first and show me the plan; write nothing until I approve.
 
 The v1 pin, `e6061fec3e4388efd73d2b0e62525972e3f1acc1` (v1 rules, no kit), stays valid for projects that remain on v1.
 
-Bootstrap detects existing rule files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`), merges instead of overwriting, wraps the rules in `BEGIN/END genai-agentic-ops` markers so they can be updated later, asks which git policy you want and which kit modules to install, and asks whether to keep, move or merge an existing ops log.
+Bootstrap detects existing rule files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`), merges instead of overwriting, wraps the rules in `BEGIN/END genai-agentic-ops` markers so they can be updated later, asks which git policy you want (it recommends `agent-commits` for your own repositories), whether the agentic files stay hidden from the project history (default) and where the overlay lives, which kit modules to install, and whether to keep, move or merge an existing ops log.
 
-Upgrading a v1 project: run the same prompt with the v2 URL. Only the content between the markers is replaced. See Part D of `RULES.md`.
+Upgrading a v1 project: run the same prompt with the v2 URL. Only the content between the markers is replaced. See Part D of `RULES.md`, which also lists what changes from v2.0 and v2.1 to v2.2 (the pin above is v2.0.0; the v2.2 pin is filled in here after it is committed).
 
 ## What the log looks like
 
@@ -57,11 +59,23 @@ Upgrading a v1 project: run the same prompt with the v2 URL. Only the content be
 | 2026-10-03 16:10 | gemini | main | `src/` | blocked | Waiting for `src/` from subagent-audit-1 |
 ```
 
+## Git policy and hidden mode (v2.2)
+
+| | `agent-commits` (recommended for your own repositories) | `user-only-git` |
+|---|---|---|
+| Commit, push, create branches, open PRs, merge | Agent, without asking again (checks must pass; branch protection still applies) | You |
+| Force push, `reset --hard`, `clean -fd`, delete branches or tags, rewrite history, bypass protection | Agent asks first | Agent does not run them |
+| Author and committer | Always your configured identity; never an agent or bot, never `Co-Authored-By`, `Signed-off-by` or `Generated-by` | Same |
+| Commit message | Conventional Commits, English, checked by the `commit-msg` hook | Same, for the messages the agent suggests |
+
+Hidden mode keeps `AGENTS.md`, the pointer files, the ops log, the hook folders and `scripts/agentic-ops/` out of the project history. They live in a separate overlay repository (`.git/agentic`, branch `agentic-ops`) and are hidden from the project's git by `.git/info/exclude`, so the project's `git status` and `git log` stay clean. `agentic-sync` restores them on another device: clone the project, run `init` once. Limits: a public remote shows the overlay branch (use a private repository for the overlay), cloud agents and CI only see what the project commits, and the exclude is per clone. Full detail: [`kit/README.md`](kit/README.md#hidden-mode-a-project-history-without-agent-files).
+
 ## What the kit enforces (and what it does not)
 
 | Rule | Enforced by | Where it works |
 |---|---|---|
 | No full reads of big text files | Guard (PreToolUse), read check | Claude Code only: other tools' read hooks lack the fields to do this safely |
+| Conventional Commits format (no prefix before the type, lowercase imperative subject, 72-character limit) | `commit-msg` git hook, `commit-msg-check.sh` | Any agent that commits |
 | No agent attribution lines or identity changes in commits | Guard on shell commands; `commit-msg` git hook | Guard: Claude Code, Codex, Cursor, OpenCode, Antigravity (adapters, see matrix); git hook: any agent that commits |
 | No hook-bypass flag, no sleep-loop polling | Guard on shell commands | Same tools as the row above |
 | Ask before force push, `reset --hard`, recursive delete | Guard on shell commands | Claude Code, Cursor, Antigravity can ask; Codex and OpenCode block with a "confirm with the user" message |
@@ -96,13 +110,13 @@ Limits you should know about:
 
 - There is no long-term data yet on stale locks or conflict rates.
 - Without the kit nothing enforces the rules. They work because current agents follow written instructions, and a different agent may follow them less well. With the kit, only the parts listed above are enforced, and only where the hook runs.
-- Rule files have size limits in some tools: Antigravity truncates any single file over 24,000 bytes and Codex stops at 32 KiB combined by default. The v2 rules block is under 8,000 characters, but your whole `AGENTS.md` counts. `start-brief` and `precommit-check` warn.
+- Rule files have size limits in some tools: Antigravity truncates any single file over 24,000 bytes and Codex stops at 32 KiB combined by default. The v2 rules block is under 8,000 characters (about 10,000 with the git-policy, hidden-mode and handoff snippets filled in), and your whole `AGENTS.md` counts. `start-brief` and `precommit-check` warn.
 - It does not replace branch protection, CI, or code review.
 
 ## Files
 
 - [`RULES.md`](RULES.md): Part A bootstrap, Part B rules block with git-policy and handoff snippets, Part C templates, Part D usage and v1 upgrade.
-- [`kit/`](kit/README.md): optional hooks (Claude Code, Codex, Cursor, OpenCode, Antigravity adapters over one core), scripts (PowerShell and sh) and tests; [`kit/compat.md`](kit/compat.md) has the sources; [`kit/harness-builder.md`](kit/harness-builder.md) is the detail for rule 12.
+- [`kit/`](kit/README.md): optional hooks (Claude Code, Codex, Cursor, OpenCode, Antigravity adapters over one core), scripts (PowerShell and sh, including `agentic-sync` for hidden mode and the commit message checker) and tests; [`kit/commit-format.md`](kit/commit-format.md) has the commit rules; [`kit/compat.md`](kit/compat.md) has the sources; [`kit/harness-builder.md`](kit/harness-builder.md) is the detail for rule 12.
 - [`CHANGELOG.md`](CHANGELOG.md)
 - [`LICENSE`](LICENSE): MIT.
 

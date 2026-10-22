@@ -54,6 +54,28 @@ else {
   else { Ok 'GIT: clean and pushed' }
 }
 
+# 3b. hidden mode: the agentic files live in the overlay repository
+$gc = & git -C $Root rev-parse --git-common-dir 2>$null
+if ($gc) {
+  if (-not [IO.Path]::IsPathRooted($gc)) { $gc = Join-Path $Root $gc }
+  $syncPs1 = Join-Path $PSScriptRoot 'agentic-sync.ps1'
+  if ((Test-Path -LiteralPath (Join-Path $gc 'agentic')) -and (Test-Path -LiteralPath $syncPs1)) {
+    Push-Location -LiteralPath $Root
+    $line = (& powershell -NoProfile -File $syncPs1 status -Brief 2>&1 | Select-Object -First 1) -join ''
+    Pop-Location
+    $unc = 0; $ah = 0
+    if ($line -match 'uncommitted=(\d+)') { $unc = [int]$Matches[1] }
+    if ($line -match 'ahead=(\d+)') { $ah = [int]$Matches[1] }
+    & git "--git-dir=$(Join-Path $gc 'agentic')" config --get remote.agentic.url 2>$null | Out-Null
+    $hasRemote = ($LASTEXITCODE -eq 0)
+    if ($GitPolicy -eq 'user-only-git') { Ok "OVERLAY: user-only-git, $unc uncommitted and $ah unpushed agentic change(s) are for the user to sync" }
+    elseif ($unc -gt 0) { No "OVERLAY: $unc agentic file(s) not committed (agentic-sync commit, then push)" }
+    elseif (-not $hasRemote) { Ok 'OVERLAY: committed (no overlay remote, local only)' }
+    elseif ($ah -gt 0) { No "OVERLAY: $ah overlay commit(s) not pushed (agentic-sync push)" }
+    else { Ok 'OVERLAY: clean and pushed' }
+  }
+}
+
 # 4. optional handoff module
 $handoff = Join-Path $PSScriptRoot 'handoff-check.ps1'
 if (Test-Path -LiteralPath $handoff) {

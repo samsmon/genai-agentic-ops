@@ -24,12 +24,19 @@ READ_HINT = "Search first (grep) or read it in parts with offset/limit."
 BLOCK_AGENT_TRAILERS = True   # commit/PR text must not carry agent attribution lines
 BLOCK_IDENTITY_CHANGE = True  # agents must not set git author/committer identity
 BLOCK_NO_VERIFY = True
+BLOCK_HOOK_BYPASS = True      # agents must not use the user-only escape hatches of the commit-msg hook
 BLOCK_SLEEP_LOOP = True
 ASK_DESTRUCTIVE = True
 
 ALLOW, ASK, DENY = "allow", "ask", "deny"
 
 TRAILER = re.compile(r"co-authored-by\s*:|signed-off-by\s*:|generated-by\s*:|generated with|\U0001F916", re.I)
+BYPASS = re.compile(
+    r"\b(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)\s*="
+    r"|\$env:(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)\b|\bEnv:(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)\b"
+    r"|\b(?:export|setenv)\s+(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)\b"
+    r"|SetEnvironmentVariable\([^)]*(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)"
+)
 IDENTITY = re.compile(
     r"--author\b|\bGIT_(AUTHOR|COMMITTER)_(NAME|EMAIL)\b|-c\s+user\.(name|email)\b"
     r"|\bgit\s+config\b[^\n]*\buser\.(name|email)\b",
@@ -43,6 +50,9 @@ DESTRUCTIVE = re.compile(
 
 
 def check_command(cmd):
+    if BLOCK_HOOK_BYPASS and BYPASS.search(cmd):
+        return DENY, ("BLOCKED: ALLOW_AGENT_TRAILER and SKIP_COMMIT_FORMAT are escape hatches for the user's own terminal; agents must not set them "
+                      f"({RULES_DOC}). Fix the commit message so the hook passes.")
     is_commit = re.search(r"\bgit\b[^\n]*\bcommit\b", cmd)
     is_pr = re.search(r"\bgh\s+(pr|issue|release)\s+(create|edit|comment|review)\b", cmd)
     if BLOCK_AGENT_TRAILERS and (is_commit or is_pr) and TRAILER.search(cmd):
