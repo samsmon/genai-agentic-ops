@@ -1,6 +1,6 @@
 # Called by .githooks/pre-commit. No model; silent when it passes.
 # Blocks: large or media/binary files, and likely secrets in added lines (values are never printed).
-# Warns: rules file larger than -MaxRulesBytes (keep it small; see the token discipline rule).
+# Warns: rules file larger than -MaxRulesBytes (keep it small; see the token discipline rule), and over 24,000 bytes (Antigravity limit).
 # Overrides, on the user's say-so only: ALLOW_BIG_FILES=1, ALLOW_SECRET_PATTERN=1.
 # SECRET_SCAN_SKIP='path/pattern/*,other/*' skips the secret scan for those paths (-like patterns).
 param(
@@ -20,6 +20,9 @@ if ($files -contains $RulesFile) {
   $len = if (Test-Path -LiteralPath $rp) { (Get-Item -LiteralPath $rp).Length } else { 0 }
   if ($len -gt $MaxRulesBytes) {
     Write-Output "WARNING: $RulesFile is $len B, over $MaxRulesBytes B. Move rarely used blocks into a doc and link to it."
+  }
+  if ($len -gt 24000) {
+    Write-Output "WARNING: $RulesFile is $len B. Antigravity truncates any single rule file over 24,000 bytes (docs, accessed 2026-10-22); trim it or move detail into linked docs."
   }
 }
 

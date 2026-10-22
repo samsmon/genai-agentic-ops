@@ -1,0 +1,15 @@
+{
+  "source": "Cursor hooks docs (cursor.com/docs/agent/hooks, accessed 2026-10-22): beforeShellExecution stdin has command, cwd, sandbox plus common fields (conversation_id, generation_id, model, hook_event_name, cursor_version, workspace_roots, user_email, transcript_path); stdout is {permission: allow|deny|ask, user_message, agent_message}.",
+  "cases": [
+    {"name": "git status", "expect": "allow",
+     "payload": {"command": "git status -sb", "cwd": "/repo", "sandbox": false, "conversation_id": "c1", "generation_id": "g1", "model": "m", "hook_event_name": "beforeShellExecution", "cursor_version": "x", "workspace_roots": ["/repo"], "user_email": "u@example.com", "transcript_path": null}},
+    {"name": "commit with generated-with line", "expect": "deny",
+     "payload": {"command": "git commit -m \"x\" -m \"Generated with a tool\"", "cwd": "/repo", "hook_event_name": "beforeShellExecution", "workspace_roots": ["/repo"]}},
+    {"name": "sleep loop", "expect": "deny",
+     "payload": {"command": "while true; do sleep 5; done", "cwd": "/repo", "hook_event_name": "beforeShellExecution", "workspace_roots": ["/repo"]}},
+    {"name": "reset hard asks", "expect": "ask",
+     "payload": {"command": "git reset --hard HEAD~1", "cwd": "/repo", "hook_event_name": "beforeShellExecution", "workspace_roots": ["/repo"]}},
+    {"name": "identity change", "expect": "deny",
+     "payload": {"command": "git config user.email bot@example.com", "cwd": "/repo", "hook_event_name": "beforeShellExecution", "workspace_roots": ["/repo"]}}
+  ]
+}

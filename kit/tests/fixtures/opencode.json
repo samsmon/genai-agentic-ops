@@ -1,0 +1,11 @@
+{
+  "source": "OpenCode plugins docs (opencode.ai/docs/plugins, accessed 2026-10-22): tool.execute.before(input, output) with input.tool and output.args; a thrown Error blocks the call. The tools page names the shell tool 'shell'. The shell tool's argument name is not documented; the plugin reads args.command, then args.cmd (experimental).",
+  "cases": [
+    {"name": "plain commit", "expect": "allow", "input": {"tool": "shell"}, "args": {"command": "git commit -m \"feat: x\""}},
+    {"name": "commit with attribution trailer", "expect": "block", "input": {"tool": "shell"}, "args": {"command": "git commit -m \"x\" -m \"Co-Authored-By: A <a@b.c>\""}},
+    {"name": "tool name bash is accepted", "expect": "block", "input": {"tool": "bash"}, "args": {"command": "git commit --no-verify -m x"}},
+    {"name": "force push asks, mapped to a block with a confirmation message", "expect": "block", "message_contains": "CONFIRMATION REQUIRED", "input": {"tool": "shell"}, "args": {"command": "git push --force origin main"}},
+    {"name": "fallback argument name cmd", "expect": "block", "input": {"tool": "shell"}, "args": {"cmd": "git commit --no-verify -m x"}},
+    {"name": "read tool is not inspected", "expect": "allow", "input": {"tool": "read"}, "args": {"filePath": "/w/big.md"}}
+  ]
+}

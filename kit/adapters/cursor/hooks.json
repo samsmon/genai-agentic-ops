@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "python -I .cursor/hooks/guard.py",
+        "timeout": 10,
+        "failClosed": false
+      }
+    ]
+  }
+}

@@ -37,6 +37,9 @@ Expect 'state file shown verbatim, non-ASCII intact' ($r.out -match ('state-body
 Expect 'hook not active is reported' ($r.out -match 'NOT ACTIVE')
 G $e.c1 @('config', 'core.hooksPath', '.githooks'); $r = Brief $e.c1
 Expect 'hook active -> OK' ($r.out -match 'core\.hooksPath=\.githooks OK')
+Expect 'no rules file -> no [RULES] warning' ($r.out -notmatch '\[RULES\]')
+Set-Content (Join-Path $e.c1 'AGENTS.md') ('x' * 25000) -Encoding ASCII -NoNewline; $r = Brief $e.c1
+Expect 'AGENTS.md over 24000 B -> warning, still exit 0' (($r.code -eq 0) -and ($r.out -match '\[RULES\]') -and ($r.out -match 'Antigravity'))
 
 $e = New-Env '' $false; $r = Brief $e.c1
 Expect 'no state file -> still exit 0, no [STATE]' (($r.code -eq 0) -and ($r.out -notmatch '\[STATE\]'))

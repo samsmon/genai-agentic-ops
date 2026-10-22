@@ -23,6 +23,12 @@ $r = Run 'AGENTS.md' 100
 Expect 'big rules file -> 0 + WARNING' (($r.code -eq 0) -and ($r.out -match 'WARNING'))
 $r = Run 'AGENTS.md' 1000
 Expect 'small rules file -> silent' (($r.code -eq 0) -and ($r.out -eq ''))
+Set-Content "$root\AGENTS.md" ('x' * 25000) -Encoding ASCII -NoNewline
+$r = Run 'AGENTS.md' 100000
+Expect 'rules file over 24000 B -> 0 + Antigravity WARNING even under the general limit' (($r.code -eq 0) -and ($r.out -match 'Antigravity'))
+Set-Content "$root\AGENTS.md" ('x' * 500) -Encoding ASCII -NoNewline
+$r = Run 'AGENTS.md' 100
+Expect 'small rules file -> no Antigravity warning' ($r.out -notmatch 'Antigravity')
 $r = Run 'README.md'
 Expect 'unrelated file -> 0 and silent' (($r.code -eq 0) -and ($r.out -eq ''))
 

@@ -2,7 +2,7 @@
 # Called by .githooks/pre-commit. No model; silent when it passes.
 # Usage: precommit-check.sh [--root DIR] [--staged-file LIST] [--rules-file AGENTS.md] [--max-rules-bytes N]
 # Blocks: large or media/binary files, and likely secrets in added lines (values are never printed).
-# Warns: rules file larger than --max-rules-bytes.
+# Warns: rules file larger than --max-rules-bytes, and over 24,000 bytes (Antigravity limit).
 # Overrides, on the user's say-so only: ALLOW_BIG_FILES=1, ALLOW_SECRET_PATTERN=1.
 # SECRET_SCAN_SKIP='dir/*,other/*' skips the secret scan for those paths (shell glob patterns).
 ROOT=''; LIST=''; RULES=AGENTS.md; MAXRULES=16384
@@ -24,6 +24,7 @@ files=$(tr -d '\r' < "$LIST" | sed '/^$/d')
 if printf '%s\n' "$files" | grep -Fxq -- "$RULES" && [ -f "$ROOT/$RULES" ]; then
   len=$(wc -c < "$ROOT/$RULES" | tr -d ' ')
   [ "$len" -gt "$MAXRULES" ] && echo "WARNING: $RULES is $len B, over $MAXRULES B. Move rarely used blocks into a doc and link to it."
+  [ "$len" -gt 24000 ] && echo "WARNING: $RULES is $len B. Antigravity truncates any single rule file over 24,000 bytes (docs, accessed 2026-10-22); trim it or move detail into linked docs."
 fi
 
 [ -e "$ROOT/.git" ] || exit $rc

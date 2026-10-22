@@ -72,6 +72,12 @@ if (Test-Path -LiteralPath $statePath) {
   Get-Content -LiteralPath $statePath -Encoding UTF8 | ForEach-Object { Write-Output $_ }
 }
 
+$rulesPath = Join-Path $Root 'AGENTS.md'
+if ((Test-Path -LiteralPath $rulesPath) -and ((Get-Item -LiteralPath $rulesPath).Length -gt 24000)) {
+  Write-Output '[RULES]'
+  Write-Output "WARNING: AGENTS.md is $((Get-Item -LiteralPath $rulesPath).Length) B. Antigravity truncates any single rule file over 24,000 bytes; trim it or move detail into linked docs."
+}
+
 Write-Output '[HOOK]'
 $h = & git -C $Root config core.hooksPath 2>$null
 if ($h -eq '.githooks') { Write-Output 'core.hooksPath=.githooks OK' }

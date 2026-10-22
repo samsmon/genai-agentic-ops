@@ -1,0 +1,17 @@
+{
+  "source": "Codex hooks docs (learn.chatgpt.com/docs/hooks, accessed 2026-10-22): PreToolUse stdin has session_id, transcript_path, cwd, hook_event_name, model, permission_mode, turn_id, tool_name, tool_use_id, tool_input.command; deny = exit 2 + stderr; ask is not supported.",
+  "cases": [
+    {"name": "plain commit", "expect": "allow",
+     "payload": {"session_id": "s1", "cwd": "/repo", "hook_event_name": "PreToolUse", "model": "m", "permission_mode": "default", "turn_id": "t1", "tool_name": "Bash", "tool_use_id": "u1", "tool_input": {"command": "git commit -m \"feat: x\""}}},
+    {"name": "commit with attribution trailer", "expect": "deny",
+     "payload": {"session_id": "s1", "cwd": "/repo", "hook_event_name": "PreToolUse", "turn_id": "t1", "tool_name": "Bash", "tool_use_id": "u2", "tool_input": {"command": "git commit -m \"x\" -m \"Co-Authored-By: A <a@b.c>\""}}},
+    {"name": "bypass flag", "expect": "deny",
+     "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_use_id": "u3", "tool_input": {"command": "git commit --no-verify -m x"}}},
+    {"name": "force push is an ask, mapped to deny with a confirmation message", "expect": "deny", "message_contains": "CONFIRMATION REQUIRED",
+     "payload": {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_use_id": "u4", "tool_input": {"command": "git push --force origin main"}}},
+    {"name": "apply_patch is not inspected", "expect": "allow",
+     "payload": {"hook_event_name": "PreToolUse", "tool_name": "apply_patch", "tool_use_id": "u5", "tool_input": {"command": "*** Begin Patch\n*** End Patch"}}},
+    {"name": "mcp tool is not inspected", "expect": "allow",
+     "payload": {"hook_event_name": "PreToolUse", "tool_name": "mcp__fs__read", "tool_use_id": "u6", "tool_input": {"path": "x"}}}
+  ]
+}

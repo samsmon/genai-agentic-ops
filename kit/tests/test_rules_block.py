@@ -25,6 +25,7 @@ expect("exactly one GIT-POLICY placeholder", block.count("<!-- GIT-POLICY -->") 
 expect("snippets B1 and B2 found", bool(b1 and b2))
 expect("block has one BEGIN and one END", block.count("BEGIN genai-agentic-ops") == 1 and block.count("END genai-agentic-ops") == 1)
 expect("no v1 marker left in block", "genai-agentic-ops v1" not in block)
+expect("block is at most 8000 characters (Antigravity truncates rule files over 24,000 bytes)", 0 < len(block) <= 8000)
 
 HEAD = re.compile(r"^## Agent Rules \(genai-agentic-ops v\d+\)$", re.M)
 

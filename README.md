@@ -61,19 +61,31 @@ Upgrading a v1 project: run the same prompt with the v2 URL. Only the content be
 
 | Rule | Enforced by | Where it works |
 |---|---|---|
-| No full reads of big text files | `guard.py` (PreToolUse) | Claude Code only |
-| No agent attribution lines or identity changes in commits | `guard.py`, `commit-msg` | Claude Code (guard); any agent that commits (git hook) |
-| No `--no-verify`, no sleep-loop polling | `guard.py` | Claude Code only |
-| Ask before force push, `reset --hard`, recursive delete | `guard.py` | Claude Code only |
+| No full reads of big text files | Guard (PreToolUse), read check | Claude Code only: other tools' read hooks lack the fields to do this safely |
+| No agent attribution lines or identity changes in commits | Guard on shell commands; `commit-msg` git hook | Guard: Claude Code, Codex, Cursor, OpenCode, Antigravity (adapters, see matrix); git hook: any agent that commits |
+| No hook-bypass flag, no sleep-loop polling | Guard on shell commands | Same tools as the row above |
+| Ask before force push, `reset --hard`, recursive delete | Guard on shell commands | Claude Code, Cursor, Antigravity can ask; Codex and OpenCode block with a "confirm with the user" message |
 | No secrets or large/binary files in commits | `pre-commit` + `precommit-check` | Any agent that commits |
-| Sync, stale-lock and unclosed-row checks | `start-brief`, `wrap-check` | Any agent that runs them; running them is still a written rule |
+| Sync, stale-lock and unclosed-row checks, oversize rules-file warning | `start-brief`, `wrap-check`, `precommit-check` | Any agent that runs them; running them is still a written rule |
 | Plan before changing, approval gates, trust boundary, harness suggestions | Nothing | Text only: depends on the agent following it |
 
-Hook enforcement can be bypassed by an agent that runs outside Claude Code or edits the hook files, and git hooks can be skipped by whoever commits. Treat the kit as a safety net.
+### Which tools it works with
+
+One neutral policy core, one thin adapter per tool. "Documented" means the adapter follows the tool's official docs and passes tests with payloads copied from them; "tested live" means the real tool was run with the hook installed. Details, sources and access dates: [`kit/README.md`](kit/README.md) and [`kit/compat.md`](kit/compat.md).
+
+| Tool | Reads `AGENTS.md` | Guard hook | Status |
+|---|---|---|---|
+| Claude Code | Via `CLAUDE.md` with `@AGENTS.md` | Yes | Documented. Live: the origin copy of the guard ran in real sessions; the refactored version is payload-tested only |
+| Codex | Yes | Yes (cannot ask) | Documented, not tested live |
+| Cursor | Yes | Yes (shell commands) | Documented, not tested live |
+| OpenCode | Yes | Plugin | Experimental (shell tool argument name undocumented), not tested live |
+| Antigravity | Yes (rule files are truncated above 24,000 bytes) | Yes | Experimental (deny output shape inferred), not tested live |
+
+If a tool has no adapter or its hook does not fire, you still get the git hooks, the scripts and the written rules. Hook enforcement can be bypassed by an agent that edits the hook files, and git hooks can be skipped by whoever commits. Treat the kit as a safety net.
 
 ## Field notes (honest version)
 
-Tested with: **Gemini/Antigravity** and **Claude Code**.
+Used for real, with the rules text (`AGENTS.md`), by: **Gemini/Antigravity** and **Claude Code**. The hook adapters for Codex, Cursor, OpenCode and Antigravity follow the vendors' docs and are tested with documented payloads only; none has been run inside its real tool yet (see the matrix above).
 
 - Three of my own repos use it: a multi-device homelab repo (about 400 commits, where the rules evolved first as a root-level ops log with locks), a portfolio site, and a cloud-ops repo.
 - v1 was applied on 2026-10-03 to all three. Cloud-ops and portfolio were bootstrapped by Gemini (rules block merged without overwriting the existing `AGENTS.md`); the homelab repo was done by Claude Code, writing the block into `CLAUDE.md` because its `AGENTS.md` is a symlink to it. The portfolio log has rows from both Claude Code and Gemini.
@@ -84,12 +96,13 @@ Limits you should know about:
 
 - There is no long-term data yet on stale locks or conflict rates.
 - Without the kit nothing enforces the rules. They work because current agents follow written instructions, and a different agent may follow them less well. With the kit, only the parts listed above are enforced, and only where the hook runs.
+- Rule files have size limits in some tools: Antigravity truncates any single file over 24,000 bytes and Codex stops at 32 KiB combined by default. The v2 rules block is under 8,000 characters, but your whole `AGENTS.md` counts. `start-brief` and `precommit-check` warn.
 - It does not replace branch protection, CI, or code review.
 
 ## Files
 
 - [`RULES.md`](RULES.md): Part A bootstrap, Part B rules block with git-policy and handoff snippets, Part C templates, Part D usage and v1 upgrade.
-- [`kit/`](kit/README.md): optional hooks, scripts (PowerShell and sh) and tests; [`kit/harness-builder.md`](kit/harness-builder.md) is the detail for rule 12.
+- [`kit/`](kit/README.md): optional hooks (Claude Code, Codex, Cursor, OpenCode, Antigravity adapters over one core), scripts (PowerShell and sh) and tests; [`kit/compat.md`](kit/compat.md) has the sources; [`kit/harness-builder.md`](kit/harness-builder.md) is the detail for rule 12.
 - [`CHANGELOG.md`](CHANGELOG.md)
 - [`LICENSE`](LICENSE): MIT.
 

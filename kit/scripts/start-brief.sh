@@ -78,6 +78,14 @@ if [ -f "$ROOT/$STATE_FILE" ]; then
   cat "$ROOT/$STATE_FILE"
 fi
 
+if [ -f "$ROOT/AGENTS.md" ]; then
+  rl=$(wc -c < "$ROOT/AGENTS.md" | tr -d ' ')
+  if [ "$rl" -gt 24000 ]; then
+    echo '[RULES]'
+    echo "WARNING: AGENTS.md is $rl B. Antigravity truncates any single rule file over 24,000 bytes; trim it or move detail into linked docs."
+  fi
+fi
+
 echo '[HOOK]'
 h=$(G config core.hooksPath 2>/dev/null)
 if [ "$h" = .githooks ]; then echo 'core.hooksPath=.githooks OK'

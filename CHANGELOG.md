@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.1.0 - unreleased (date and SHA are filled in when committed)
+- The pin `5baef69cde25b196ad2c0cb19fc9595fa50e80ab` stays valid for v2.0.0. The Part B rules block is byte-for-byte unchanged in this release (marker stays `v2`), so a project bootstrapped from that pin has the same block as one bootstrapped from this version; only Part A, the kit and the docs change.
+- Guard works beyond Claude Code. New agent-neutral core `kit/core/policy.py` (all guard decisions in one pure function) and thin adapters: `kit/claude/hooks/guard.py` (now calls the core, same behavior), `kit/adapters/codex/`, `kit/adapters/cursor/`, `kit/adapters/opencode/`, `kit/adapters/antigravity/`. Each adapter has its own README.
+- Honest compatibility matrix in `kit/README.md` and `README.md`, sources and access dates in `kit/compat.md`. Codex and Cursor adapters follow the official docs; OpenCode and Antigravity are marked experimental (undocumented shell argument name; inferred deny output shape). None of the four has been run inside its real tool yet.
+- Codex and OpenCode cannot ask the user, so "ask" decisions are blocked with a "get the user's confirmation" message (configurable).
+- Rules-file size warning: `start-brief` and `precommit-check` (PowerShell and sh) warn when `AGENTS.md` is over 24,000 bytes, the point where Antigravity truncates a rule file. The block test caps Part B at 8,000 characters.
+- Part A: per-tool pointer lines (`CLAUDE.md` gets `@AGENTS.md`; Codex, Cursor and OpenCode need nothing; `GEMINI.md` only if it already exists), per-tool install layout for the adapters, and the size note.
+- Tests: `test_policy.py` (core), `test_adapters.py` plus `opencode-plugin.test.mjs` (adapters, with documented payloads in `kit/tests/fixtures/`), size-warning cases in the script suites.
+
 ## v2.0.0 - 2026-10-22 (pin: `5baef69cde25b196ad2c0cb19fc9595fa50e80ab`)
 - `RULES.md` marker version `v1` -> `v2`. The v1 file and its SHA pin stay valid for projects that remain on v1.
 - Bootstrap now asks for a git policy (`user-only-git` or `agent-commits`) and which kit modules to install. Rules block gets sections 9 (git policy, snippet B1/B2), 10 (token discipline), 11 (enforcement, honest about what is text), 12 (harness builder). Optional handoff section 13 (snippet B3).

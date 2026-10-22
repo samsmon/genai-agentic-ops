@@ -22,7 +22,7 @@ You are asked to apply this document to the current project. Required order:
      - `user-only-git`: agents never commit, push, branch or open PRs; they prepare changes and suggest a commit message. The user runs git.
      - `agent-commits`: agents may commit and push when the user allows it (the v1 behaviour).
    - **Kit modules** (recommended: all three core modules, handoff only if several agents hand work to each other). Modules are described in `kit/README.md`:
-     1. `guard` (Claude Code hooks: `kit/claude/`),
+     1. `guard` (blocks and asks before risky commands; one neutral core `kit/core/` plus one adapter per tool the project uses: Claude Code `kit/claude/`, Codex, Cursor, OpenCode, Antigravity in `kit/adapters/<tool>/`; ask which tools the user runs and install only those; support level per tool is in the `kit/README.md` compatibility matrix),
      2. `githooks` (commit-msg and pre-commit: `kit/githooks/`),
      3. `scripts` (start-brief, wrap-check, precommit-check: `kit/scripts/`; PowerShell or sh, pick what the machine has),
      4. `handoff` (optional: cross-agent review protocol: `kit/handoff/`).
@@ -35,13 +35,14 @@ You are asked to apply this document to the current project. Required order:
      - **END without BEGIN** (the BEGIN line was lost): the block starts at the line `## Agent Rules (genai-agentic-ops vN)` and ends at END. Show that range in the plan, then replace it, writing both markers back.
      - **BEGIN without END, or the `## Agent Rules (genai-agentic-ops vN)` heading with no markers at all:** the end of the block is unknown. Stop, show the user where you think it ends, and ask before replacing anything.
      - **Neither marker nor heading:** append the block at the end of the file.
-   - Any other rules file found (`CLAUDE.md`, `GEMINI.md`, `.cursorrules`) gets a single pointer line to `AGENTS.md` (Claude Code: `@AGENTS.md`). Do not duplicate content.
+   - Pointer lines, never duplicated content. `CLAUDE.md` (Claude Code does not read `AGENTS.md` by itself) gets `@AGENTS.md`; create it if the project uses Claude Code. Codex, Cursor and OpenCode read `AGENTS.md` directly, so they need no extra file. Antigravity reads `AGENTS.md` too (current versions); only if a `GEMINI.md` already exists, add one line to it telling the agent to read `AGENTS.md`, and do not create a `GEMINI.md` just for this. Any other existing rules file (`.cursorrules`, etc.) gets one pointer line as well.
+   - **Rules file size.** Antigravity truncates any single rule file over 24,000 bytes. If `AGENTS.md` is larger, say so in the plan and suggest moving detail into linked docs. The Part B block is under 8,000 characters.
    - **CURRENT_OPS location.** Look for an existing ops log in any location or casing (`CURRENT_OPS.md` at root, `docs/current_ops.md`, etc.). If none exists, create `docs/CURRENT_OPS.md` and `docs/CURRENT_OPS-archive.md` from the Part C templates. If one exists, ask the user to pick one:
      1. **Keep**: leave it where it is and use it as the log (update the path in the Rules Block to match).
      2. **Move**: `git mv` it to `docs/CURRENT_OPS.md` and update references.
      3. **Merge**: create `docs/CURRENT_OPS.md` from the Part C template and carry over the existing content (active rows converted to the table format, old entries into `docs/CURRENT_OPS-archive.md`). Nothing is dropped; show the user the result before removing the old file.
      Recommend **Keep** if the existing log is actively used by other agents or has no table format conflict. Never move or merge while another agent has a `running` row in the existing log.
-   - **Kit files** are copied, never overwritten: if a target file exists, show the diff and ask. Layout when installed: `.claude/settings.json` and `.claude/hooks/` (merge into existing settings, do not replace), `.githooks/`, `scripts/agentic-ops/` (scripts), `scripts/agentic-ops/tests/` (optional). Then run the kit tests and show the result.
+   - **Kit files** are copied, never overwritten: if a target file exists, show the diff and ask. Layout when installed: `scripts/agentic-ops/core/policy.py` (needed by every guard adapter), `.claude/settings.json` and `.claude/hooks/` (merge into existing settings, do not replace), `.codex/hooks.json` and `.codex/hooks/guard.py`, `.cursor/hooks.json` and `.cursor/hooks/guard.py`, `.opencode/plugins/agentic-ops-guard.js`, `.agents/hooks.json` and `.agents/hooks/guard.py` (each only for tools the project uses; merge into existing hook files), `.githooks/`, `scripts/agentic-ops/` (scripts), `scripts/agentic-ops/tests/` (optional). Then run the kit tests and show the result. Say plainly which adapters are only documented and not yet tested in the real tool (see the matrix in `kit/README.md`).
 5. Show `git diff --stat` and a summary. Commit/push only as the git policy and the user allow. Never stage binaries or secrets.
 6. Rules persist through file contents, not conversation memory. Every future session must read `AGENTS.md` at start.
 

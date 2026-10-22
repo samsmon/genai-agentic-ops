@@ -1,0 +1,15 @@
+{
+  "agentic-ops-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "command": "python -I .agents/hooks/guard.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

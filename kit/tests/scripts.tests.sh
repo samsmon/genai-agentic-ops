@@ -35,6 +35,9 @@ has 'state-body'; expect 'start-brief: state file shown' $?
 has 'NOT ACTIVE'; expect 'start-brief: hook not active reported' $?
 g "$C1" config core.hooksPath .githooks; brief "$C1"
 has 'core.hooksPath=.githooks OK'; expect 'start-brief: hook active -> OK' $?
+hasnt '\[RULES\]'; expect 'start-brief: no rules file -> no [RULES] warning' $?
+head -c 25000 /dev/zero | tr '\0' x > "$C1/AGENTS.md"; brief "$C1"
+[ $CODE = 0 ] && has '\[RULES\]' && has Antigravity; expect 'start-brief: AGENTS.md over 24000 B -> warning, still exit 0' $?
 new_env; commit_in "$C2" b.txt; g "$C2" push -q; brief "$C1"
 [ $CODE = 0 ] && has BEHIND_CLEAN; expect 'start-brief: behind and clean -> BEHIND_CLEAN' $?
 new_env; commit_in "$C1" a.txt; brief "$C1"
@@ -180,6 +183,10 @@ OUT=$(SECRET_SCAN_SKIP='private/*' sh "$KIT/scripts/precommit-check.sh" --root "
 pc_env; head -c 500 /dev/zero | tr '\0' x > "$PC/AGENTS.md"; echo AGENTS.md > "$BASE/staged.txt"
 OUT=$(sh "$KIT/scripts/precommit-check.sh" --root "$PC" --staged-file "$BASE/staged.txt" --max-rules-bytes 100 2>&1); CODE=$?
 [ $CODE = 0 ] && has WARNING; expect 'precommit: big rules file -> 0 + WARNING' $?
+hasnt Antigravity; expect 'precommit: small rules file -> no Antigravity warning' $?
+pc_env; head -c 25000 /dev/zero | tr '\0' x > "$PC/AGENTS.md"; echo AGENTS.md > "$BASE/staged.txt"
+OUT=$(sh "$KIT/scripts/precommit-check.sh" --root "$PC" --staged-file "$BASE/staged.txt" --max-rules-bytes 100000 2>&1); CODE=$?
+[ $CODE = 0 ] && has Antigravity; expect 'precommit: rules file over 24000 B -> 0 + Antigravity WARNING' $?
 
 # ---- commit-msg hook
 msg=$BASE/msg
