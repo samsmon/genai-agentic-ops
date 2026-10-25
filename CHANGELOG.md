@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.3.2 - unreleased (date and SHA are filled in when committed)
+## v2.3.2 - 2026-10-25 (commit `32c29b658bf45e00ccf2a3c2915a2bdb48cc4499`)
 - **Fix, important for Antigravity:** the `hooks.json` command of v2.3.0 and v2.3.1 was a one-line Python script with nested double quotes. The IDE splits the command on spaces and runs it with no shell, so Python got `"import` and failed with `SyntaxError`; every shell command was then refused (a non-zero hook exit blocks). Found in a live probe (Gemini 3.8 Flash High, Windows, 2026-10-25); the earlier tests ran the command through cmd.exe and sh, which parse the quotes. If you installed v2.3.0 or v2.3.1 with the antigravity tool, update to this version. The command is now `python -B -I hooks/guard.py` (the hook runs from `.agents/`).
 - `doctor` and the tests now split the command on spaces and run it with no shell from `.agents/`, check that it has no quotes or shell characters, and a test installs over a v2.3.x entry and checks it is replaced in place while the user's own hooks stay.
 - The Part B rules block is unchanged. `bca34a37edd8725fa2875c0f831d583c5500f7c1` (v2.3.0) and `8fcf69b0e9e97c698a489d133f523c6d99c83a0f` (v2.3.1) stay valid for the rules; their Antigravity adapter is the broken one.
