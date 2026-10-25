@@ -1,8 +1,8 @@
 # Changelog
 
-## v2.3.1 - unreleased (date and SHA are filled in when committed)
+## v2.3.1 - 2026-10-25 (commit `8fcf69b0e9e97c698a489d133f523c6d99c83a0f`)
 - Fix: `install.py --shell ps` looked for `agentic-sync.ps` instead of `agentic-sync.ps1`, so a hidden-mode install on Windows (where `ps` is the default shell) stopped with exit code 2 after copying the files. Found in a live run (Gemini 3.8 Flash High, 2026-10-25). `kit/tests/test_install.py` now installs in hidden mode through each shell entry and does not skip the sync step.
-- Note: Antigravity loads `.agents/hooks.json` from the opened workspace root. In that live run the parent folder was open, the guard never loaded and a force push ran. The installer prints a reminder, `doctor` reports it as UNKNOWN, and the READMEs say so. The pin `bca34a37edd8725fa2875c0f831d583c5500f7c1` (v2.3.0) stays valid; the Part B rules block is unchanged.
+- Note: Antigravity loads `.agents/hooks.json` from the opened workspace root. In that live run the parent folder was open, the guard never loaded and a force push ran. The installer prints a reminder, `doctor` reports it as UNKNOWN, and the READMEs say so. The pin `bca34a37edd8725fa2875c0f831d583c5500f7c1` (v2.3.0) stays valid for the rules, but its installer cannot finish a hidden-mode install on Windows; use `8fcf69b0e9e97c698a489d133f523c6d99c83a0f` (v2.3.1). The Part B rules block is unchanged.
 
 ## v2.3.0 - 2026-10-25 (commit `bca34a37edd8725fa2875c0f831d583c5500f7c1`)
 - Pins: `bca34a37edd8725fa2875c0f831d583c5500f7c1` is v2.3.0; `bb594df1a2e18a143cc55e911872a0cb33cc8312` stays valid for v2.2.0 (and `5baef69cde25b196ad2c0cb19fc9595fa50e80ab` for v2.0.0, `aebfb4a20bacaa3ae0b446b7bd3ae28e05c658cf` for v2.1.0). The Part B rules block is byte-for-byte unchanged (marker stays `v2`), so a project bootstrapped from the v2.2 pin has the same `AGENTS.md` block. What changes is Part A, Part D and the kit.

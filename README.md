@@ -41,7 +41,7 @@ Both prompts act on the project your agent session is running in (the folder it 
 **Install** (the project has no genai-agentic-ops yet):
 
 ```
-Read https://raw.githubusercontent.com/samsmon/genai-agentic-ops/bca34a37edd8725fa2875c0f831d583c5500f7c1/RULES.md and run Part A (Bootstrap) for this project.
+Read https://raw.githubusercontent.com/samsmon/genai-agentic-ops/8fcf69b0e9e97c698a489d133f523c6d99c83a0f/RULES.md and run Part A (Bootstrap) for this project.
 Analyze first and show me the plan; write nothing until I approve.
 ```
 
@@ -66,7 +66,7 @@ The v1 pin, `e6061fec3e4388efd73d2b0e62525972e3f1acc1` (v1 rules, no kit), stays
 
 Bootstrap detects existing rule files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`), merges instead of overwriting, wraps the rules in `BEGIN/END genai-agentic-ops` markers so they can be updated later, asks which git policy you want (it recommends `agent-commits` for your own repositories), whether the agentic files stay hidden from the project history (default) and where the overlay lives, which kit modules to install, and whether to keep, move or merge an existing ops log.
 
-Upgrading a v1 project: run the install prompt with the v2 URL (a v1 project has no receipt). Only the content between the markers is replaced. See Part D of `RULES.md`, which also lists what changes from v2.0 and v2.1 to v2.2 and from v2.2 to v2.3 (the pin above is v2.3; `bb594df1a2e18a143cc55e911872a0cb33cc8312` is v2.2 and still valid).
+Upgrading a v1 project: run the install prompt with the v2 URL (a v1 project has no receipt). Only the content between the markers is replaced. See Part D of `RULES.md`, which also lists what changes from v2.0 and v2.1 to v2.2 and from v2.2 to v2.3 (the pin above is v2.3.1; `bca34a37edd8725fa2875c0f831d583c5500f7c1` is v2.3.0 and `bb594df1a2e18a143cc55e911872a0cb33cc8312` is v2.2, both still valid, but v2.3.0 cannot finish a hidden-mode install on Windows).
 
 Since v2.3 the mechanical part of the bootstrap is a command, so a small model does not have to get a long procedure right: the agent asks you the questions, then runs `kit/install.py` (entries `install.sh` and `install.ps1`). It is a dry run until `--apply`, copies only the files for the tools and modules you pick (`kit/MANIFEST`), merges the rules block into `AGENTS.md` (damaged markers stop it and ask), adds the pointer lines, creates the ops log, and in hidden mode runs `agentic-sync init`. Running it twice changes nothing. `kit/scripts/doctor.*` then reports what is installed and what is enforced by a machine versus only written down.
 
