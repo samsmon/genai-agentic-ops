@@ -9,8 +9,11 @@ foreach ($f in (Get-ChildItem -LiteralPath $PSScriptRoot -Filter *.tests.ps1 | S
   $o = & powershell -NoProfile -File $f.FullName 2>&1
   if ($LASTEXITCODE -eq 0) { Write-Output "OK     $name" } else { Write-Output "FAIL   $name"; ($o | Where-Object { $_ -match '^FAIL' }) | ForEach-Object { Write-Output "         $_" }; $bad++ }
 }
+# the Python suites need the kit folders (adapters, core, install.py); an installed project has the script suites only
+$inKit = Test-Path -LiteralPath (Join-Path $PSScriptRoot '..\adapters')
 foreach ($f in (Get-ChildItem -LiteralPath $PSScriptRoot -Filter test_*.py | Sort-Object Name)) {
-  $o = & python -I $f.FullName 2>&1
+  if (-not $inKit) { Write-Output "SKIP   $($f.BaseName) (installed layout)"; continue }
+  $o = & python -B -I $f.FullName 2>&1
   if ($LASTEXITCODE -eq 0) { Write-Output "OK     $($f.BaseName)" } else { Write-Output "FAIL   $($f.BaseName)"; ($o | Where-Object { $_ -match '^FAIL' }) | ForEach-Object { Write-Output "         $_" }; $bad++ }
 }
 # bash.exe in System32 is often the WSL stub with no distribution, so probe each candidate

@@ -1,5 +1,6 @@
 $ErrorActionPreference = 'Stop'
-$script = (Resolve-Path (Join-Path $PSScriptRoot '..\scripts\precommit-check.ps1')).Path
+. (Join-Path $PSScriptRoot 'layout.ps1')
+$script = (Resolve-Path (Join-Path $Sc 'precommit-check.ps1')).Path
 $root = Join-Path $env:TEMP ("pctest-" + [guid]::NewGuid())
 function Run($staged, [int]$max = 16384) { $o = & powershell -NoProfile -File $script -Staged $staged -Root $root -MaxRulesBytes $max; return @{ code = $LASTEXITCODE; out = ($o -join "`n") } }
 $fail = 0

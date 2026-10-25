@@ -34,20 +34,41 @@ Parallel agents have no shared memory. In practice that means:
 | Harness builder (new): the agent recommends a script, template, doc, skill or hook when work repeats | Repeated chores turn into tools, without unasked building |
 | Optional handoff protocol between agents (new) | Work written by one agent gets reviewed by another |
 
-## Quick start
+## Quick start: install or update
 
-Pin the URL to a commit SHA, not `main`, so the rules only change when you choose.
+Both prompts act on the project your agent session is running in (the folder it was opened in), not on this repository. Pin the URL to a commit SHA, not `main`, so the rules only change when you choose.
+
+**Install** (the project has no genai-agentic-ops yet):
 
 ```
 Read https://raw.githubusercontent.com/samsmon/genai-agentic-ops/bb594df1a2e18a143cc55e911872a0cb33cc8312/RULES.md and run Part A (Bootstrap) for this project.
 Analyze first and show me the plan; write nothing until I approve.
 ```
 
+**Update** (genai-agentic-ops is already installed; replace `<NEW-SHA>` with the commit you want):
+
+```
+Read https://raw.githubusercontent.com/samsmon/genai-agentic-ops/<NEW-SHA>/RULES.md. genai-agentic-ops is already installed in this project; update it to this version (Part A and Part D of that file).
+Read scripts/agentic-ops/INSTALLED.json for my earlier choices (tools, modules, git policy, visibility) and keep them unless I say otherwise.
+Run the installer as a dry run first and show me the plan, including every conflict; write nothing until I approve.
+```
+
+What an update does, in this order:
+1. The agent reads the install receipt (`scripts/agentic-ops/INSTALLED.json`, written by the installer) so you are not asked the same questions again, then runs `kit/install.*` for the new pin as a dry run.
+2. The rules block in `AGENTS.md` is replaced between the `BEGIN/END genai-agentic-ops` markers and nothing else in the file is touched. Damaged markers stop the update and the agent asks you.
+3. Kit files that are identical are skipped. A file that differs is listed with a diff and is not written (exit code 4). Read the diff, then the agent reruns with `--force`. That overwrites local edits to kit files, so keep your own changes outside them. Hook entries in `.claude/settings.json` or `hooks.json` that belong to the kit are replaced in place, and your other entries stay.
+4. In hidden mode the changed agentic files are then committed and pushed to the overlay with `agentic-sync`, as the git policy allows. Nothing reaches the project history.
+5. `kit/scripts/doctor.*` reports what is installed, what is enforced by a machine and what is only written down.
+
+Running the update twice changes nothing ("Nothing to do: everything is already installed and up to date"). Before you update, read `CHANGELOG.md` for what changed between your pin and the new one.
+
 The v1 pin, `e6061fec3e4388efd73d2b0e62525972e3f1acc1` (v1 rules, no kit), stays valid for projects that remain on v1.
 
 Bootstrap detects existing rule files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`), merges instead of overwriting, wraps the rules in `BEGIN/END genai-agentic-ops` markers so they can be updated later, asks which git policy you want (it recommends `agent-commits` for your own repositories), whether the agentic files stay hidden from the project history (default) and where the overlay lives, which kit modules to install, and whether to keep, move or merge an existing ops log.
 
-Upgrading a v1 project: run the same prompt with the v2 URL. Only the content between the markers is replaced. See Part D of `RULES.md`, which also lists what changes from v2.0 and v2.1 to v2.2 (the pin above is v2.0.0; the v2.2 pin is filled in here after it is committed).
+Upgrading a v1 project: run the install prompt with the v2 URL (a v1 project has no receipt). Only the content between the markers is replaced. See Part D of `RULES.md`, which also lists what changes from v2.0 and v2.1 to v2.2 and from v2.2 to v2.3 (the pin above is v2.2; the v2.3 pin is filled in here after it is committed).
+
+Since v2.3 the mechanical part of the bootstrap is a command, so a small model does not have to get a long procedure right: the agent asks you the questions, then runs `kit/install.py` (entries `install.sh` and `install.ps1`). It is a dry run until `--apply`, copies only the files for the tools and modules you pick (`kit/MANIFEST`), merges the rules block into `AGENTS.md` (damaged markers stop it and ask), adds the pointer lines, creates the ops log, and in hidden mode runs `agentic-sync init`. Running it twice changes nothing. `kit/scripts/doctor.*` then reports what is installed and what is enforced by a machine versus only written down.
 
 ## What the log looks like
 
@@ -78,7 +99,7 @@ Hidden mode keeps `AGENTS.md`, the pointer files, the ops log, the hook folders 
 | Conventional Commits format (no prefix before the type, lowercase imperative subject, 72-character limit) | `commit-msg` git hook, `commit-msg-check.sh` | Any agent that commits |
 | No agent attribution lines or identity changes in commits | Guard on shell commands; `commit-msg` git hook | Guard: Claude Code, Codex, Cursor, OpenCode, Antigravity (adapters, see matrix); git hook: any agent that commits |
 | No hook-bypass flag, no sleep-loop polling | Guard on shell commands | Same tools as the row above |
-| Ask before force push, `reset --hard`, recursive delete | Guard on shell commands | Claude Code, Cursor, Antigravity can ask; Codex and OpenCode block with a "confirm with the user" message |
+| Ask before force push, `reset --hard`, recursive delete | Guard on shell commands | Claude Code and Cursor can ask; Codex, OpenCode and Antigravity block with a "confirm with the user" message (Antigravity documents `ask` but did not enforce it in a live run) |
 | No secrets or large/binary files in commits | `pre-commit` + `precommit-check` | Any agent that commits |
 | Sync, stale-lock and unclosed-row checks, oversize rules-file warning | `start-brief`, `wrap-check`, `precommit-check` | Any agent that runs them; running them is still a written rule |
 | Plan before changing, approval gates, trust boundary, harness suggestions | Nothing | Text only: depends on the agent following it |
@@ -93,18 +114,19 @@ One neutral policy core, one thin adapter per tool. "Documented" means the adapt
 | Codex | Yes | Yes (cannot ask) | Documented, not tested live |
 | Cursor | Yes | Yes (shell commands) | Documented, not tested live |
 | OpenCode | Yes | Plugin | Experimental (shell tool argument name undocumented), not tested live |
-| Antigravity | Yes (rule files are truncated above 24,000 bytes) | Yes | Experimental (deny output shape inferred), not tested live |
+| Antigravity | Yes (rule files are truncated above 24,000 bytes) | Yes (`ask` is answered as `deny`) | `deny` seen blocking a real command (Gemini 3.8 Flash High, Windows, 2026-10-23, one run); the deny output shape is inferred from the docs; `ask` is not enforced by the IDE. The cwd-independent hook command of v2.3 is tested locally, not re-run in the IDE |
 
 If a tool has no adapter or its hook does not fire, you still get the git hooks, the scripts and the written rules. Hook enforcement can be bypassed by an agent that edits the hook files, and git hooks can be skipped by whoever commits. Treat the kit as a safety net.
 
 ## Field notes (honest version)
 
-Used for real, with the rules text (`AGENTS.md`), by: **Gemini/Antigravity** and **Claude Code**. The hook adapters for Codex, Cursor, OpenCode and Antigravity follow the vendors' docs and are tested with documented payloads only; none has been run inside its real tool yet (see the matrix above).
+Used for real, with the rules text (`AGENTS.md`), by: **Gemini/Antigravity** and **Claude Code**. The hook adapters for Codex, Cursor and OpenCode follow the vendors' docs and are tested with documented payloads only; none has been run inside its real tool. For Antigravity there is one live observation (below).
 
 - Three of my own repos use it: a multi-device homelab repo (about 400 commits, where the rules evolved first as a root-level ops log with locks), a portfolio site, and a cloud-ops repo.
 - v1 was applied on 2026-10-03 to all three. Cloud-ops and portfolio were bootstrapped by Gemini (rules block merged without overwriting the existing `AGENTS.md`); the homelab repo was done by Claude Code, writing the block into `CLAUDE.md` because its `AGENTS.md` is a symlink to it. The portfolio log has rows from both Claude Code and Gemini.
 - v2 comes from what the cloud-ops repo needed after v1: its local copy of the block drifted (a "user runs git" policy), and it grew hooks, session scripts and a review protocol. v2 puts those back into a reusable form. At the time of writing the v2 kit has been run only against its own test suite on one Windows machine (PowerShell 5.1, Git Bash, Python 3.11); it has not yet been applied to a second real repository, and the `.sh` scripts have not been run on Linux or macOS.
 - The harness builder rule (recommend, never build unasked) is new and untested over a long period. Whether agents notice the triggers reliably is an open question.
+- 2026-10-23, one bootstrap test per model on a throwaway repository, Windows: Gemini 3.8 Flash High (in Antigravity) installed the v2.2 kit and produced a correct hidden-mode result, but its overlay held bytecode files, duplicate copies and the adapters of tools it was not asked for, `git push --force` ran without a prompt after an `ask` answer, and the hook command path did not resolve. GPT-OSS 120B planned a bootstrap without the `AGENTS.md` rules block, described hidden mode backwards and invented kit files. These findings are what v2.3 changes: a deterministic installer, `ask` answered as `deny` for Antigravity, a cwd-independent hook command, bytecode kept out of the overlay, and shell tests that also run from the installed layout. One model per tool is not a benchmark.
 
 Limits you should know about:
 
@@ -116,7 +138,7 @@ Limits you should know about:
 ## Files
 
 - [`RULES.md`](RULES.md): Part A bootstrap, Part B rules block with git-policy and handoff snippets, Part C templates, Part D usage and v1 upgrade.
-- [`kit/`](kit/README.md): optional hooks (Claude Code, Codex, Cursor, OpenCode, Antigravity adapters over one core), scripts (PowerShell and sh, including `agentic-sync` for hidden mode and the commit message checker) and tests; [`kit/commit-format.md`](kit/commit-format.md) has the commit rules; [`kit/compat.md`](kit/compat.md) has the sources; [`kit/harness-builder.md`](kit/harness-builder.md) is the detail for rule 12.
+- [`kit/`](kit/README.md): optional hooks (Claude Code, Codex, Cursor, OpenCode, Antigravity adapters over one core), scripts (PowerShell and sh, including `agentic-sync` for hidden mode and the commit message checker) and tests; [`kit/commit-format.md`](kit/commit-format.md) has the commit rules; [`kit/compat.md`](kit/compat.md) has the sources; [`kit/harness-builder.md`](kit/harness-builder.md) is the detail for rule 12. The installer (`kit/install.*`, one list in `kit/MANIFEST`) and the `doctor` report are described there.
 - [`CHANGELOG.md`](CHANGELOG.md)
 - [`LICENSE`](LICENSE): MIT.
 

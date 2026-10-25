@@ -53,6 +53,23 @@ function OGet([string]$key) {
 }
 function Say([string]$m) { Write-Output $m }
 function Die([int]$code, [string]$m) { [Console]::Error.WriteLine("agentic-sync: $m"); exit $code }
+# bytecode caches are never part of the overlay
+$NoisePathspecs = @(':(exclude,glob)**/__pycache__/**', ':(exclude,glob)**/*.pyc')
+
+# sh is not on PATH on a default Windows setup; Git for Windows ships it
+function FindSh {
+  $c = Get-Command sh -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($c) { return $c.Source }
+  $roots = @($env:ProgramFiles, ${env:ProgramFiles(x86)}, (Join-Path $env:LOCALAPPDATA 'Programs')) | Where-Object { $_ }
+  foreach ($r in $roots) {
+    foreach ($rel in 'Git\bin\sh.exe', 'Git\usr\bin\sh.exe') {
+      $p = Join-Path $r $rel
+      if (Test-Path -LiteralPath $p) { return $p }
+    }
+  }
+  return $null
+}
+
 function Patterns {
   if (Test-Path -LiteralPath $ListFile) { $src = Get-Content -LiteralPath $ListFile -Encoding UTF8 } else { $src = $DefaultList }
   @($src | ForEach-Object { $_.TrimEnd("`r") } | Where-Object { $_ -notmatch '^\s*#' -and $_ -notmatch '^\s*$' })
@@ -221,17 +238,18 @@ function CmdCommit {
     if ($Message -match '(?i)(co-authored-by|signed-off-by|generated-by):|generated with') { Die 1 'the message carries an agent attribution line' }
     $chk = Join-Path $SelfDir 'commit-msg-check.sh'
     if (Test-Path -LiteralPath $chk) {
-      if (Get-Command sh -ErrorAction SilentlyContinue) {
-        & sh $chk $mf
+      $shExe = FindSh
+      if ($shExe) {
+        & $shExe $chk $mf
         if ($LASTEXITCODE -ne 0) { exit 1 }
-      } else { [Console]::Error.WriteLine('warning: sh not found; the commit message format was not checked') }
+      } else { [Console]::Error.WriteLine('warning: sh not found (PATH, Program Files\Git\bin, Program Files\Git\usr\bin); the commit message format was not checked') }
     }
     $ident = "$(OG var GIT_AUTHOR_IDENT 2>$null) $(OG var GIT_COMMITTER_IDENT 2>$null)"
     if ($ident -match '(?i)anthropic|claude|gemini|antigravity|codex|openai|\[bot\]') { Die 1 "the overlay commit identity looks like an agent or bot: $ident" }
     $lp = [IO.Path]::GetTempFileName()
     $live = @(LivePatterns)
     if ($live.Count -gt 0) {
-      [IO.File]::WriteAllText($lp, ($live -join "`n") + "`n", $Utf8)
+      [IO.File]::WriteAllText($lp, (($live + $NoisePathspecs) -join "`n") + "`n", $Utf8)
       $null = OG add -A "--pathspec-from-file=$lp" 2>$null
       if ($LASTEXITCODE -ne 0) { Remove-Item $lp -ErrorAction SilentlyContinue; Die 2 'git add failed' }
     }
@@ -268,7 +286,7 @@ function CmdStatus {
   $branch = BranchName; $ref = "refs/remotes/$RName/$branch"
   if ($Fetch) { $null = FetchOverlay $branch }
   $pats = @(Patterns)
-  $changed = @(OG status --short --untracked-files=all -- $pats 2>$null)
+  $changed = @(OG status --short --untracked-files=all -- $pats $NoisePathspecs 2>$null)
   $ahead = 0; $behind = 0
   $null = OG rev-parse -q --verify HEAD 2>$null; $hasHead = ($LASTEXITCODE -eq 0)
   $null = OG rev-parse -q --verify $ref 2>$null; $hasRef = ($LASTEXITCODE -eq 0)

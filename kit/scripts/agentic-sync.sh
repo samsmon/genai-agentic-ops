@@ -236,6 +236,8 @@ cmd_commit() {
     rm -f "$mf"; die 1 "the overlay commit identity looks like an agent or bot: $ident"
   fi
   lp=$(mktemp); live_patterns > "$lp"
+  # bytecode caches are never part of the overlay (a tracked .pyc would show up as a change on every run)
+  if [ -s "$lp" ]; then printf '%s\n' ':(exclude,glob)**/__pycache__/**' ':(exclude,glob)**/*.pyc' >> "$lp"; fi
   if [ -s "$lp" ]; then og add -A --pathspec-from-file="$lp" || { rm -f "$mf" "$lp"; die 2 "git add failed"; }; fi
   rm -f "$lp"
   if og diff --cached --quiet 2>/dev/null && og rev-parse -q --verify HEAD >/dev/null 2>&1; then
@@ -274,7 +276,7 @@ cmd_status() {
   branch=$(branch_name); ref="refs/remotes/$RNAME/$branch"
   [ $dofetch = 1 ] && fetch_overlay "$branch" >/dev/null 2>&1
   pats=$(patterns | tr '\n' ' ')
-  changed=$(og status --short --untracked-files=all -- $pats 2>/dev/null | wc -l | tr -d ' ')
+  changed=$(og status --short --untracked-files=all -- $pats ':(exclude,glob)**/__pycache__/**' ':(exclude,glob)**/*.pyc' 2>/dev/null | wc -l | tr -d ' ')
   ahead=0; behind=0
   if og rev-parse -q --verify "$ref" >/dev/null 2>&1; then
     if og rev-parse -q --verify HEAD >/dev/null 2>&1; then
@@ -289,7 +291,7 @@ cmd_status() {
   say "overlay: $OVERLAY"
   say "branch: $branch  remote: $(oget "remote.$RNAME.url" || echo none)"
   say "uncommitted agentic changes: $changed"
-  [ "$changed" != 0 ] && og status --short --untracked-files=all -- $pats | sed 's/^/  /'
+  [ "$changed" != 0 ] && og status --short --untracked-files=all -- $pats ':(exclude,glob)**/__pycache__/**' ':(exclude,glob)**/*.pyc' | sed 's/^/  /'
   say "overlay commits ahead of remote: $ahead, behind: $behind (as of the last fetch; use --fetch)"
   if [ "$leaked" != 0 ]; then say "WARNING: $leaked agentic file(s) are tracked in the project's own history:"; git ls-files -- $pats | sed 's/^/  /'; fi
   pstat=$(git status --short 2>/dev/null | wc -l | tr -d ' ')

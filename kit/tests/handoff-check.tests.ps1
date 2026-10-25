@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Continue'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$script = (Resolve-Path (Join-Path $PSScriptRoot '..\handoff\handoff-check.ps1')).Path
+. (Join-Path $PSScriptRoot 'layout.ps1')
+$script = (Resolve-Path (Join-Path $Ho 'handoff-check.ps1')).Path
 $base = Join-Path $env:TEMP ("hctest-" + [guid]::NewGuid())
 $today = '2026-10-11'
 function New-Env([string]$nowDate = $today, [bool]$logLine = $true) {

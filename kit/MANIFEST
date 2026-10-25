@@ -1,0 +1,50 @@
+# The one list of kit files. install.py, doctor.py and the tests read it; nothing else keeps a second list.
+# Format: group|mode|source (relative to kit/)|destination (relative to the project)
+# Modes: copy | copy-exec (executable bit) | merge-json (merged into an existing file of the same name, never replaced)
+# Groups: core (any guard adapter needs it), tool:<name> (one per tool), githooks, scripts, scripts:ps, scripts:sh,
+#         handoff:ps, handoff:sh, tests, tests:ps, tests:sh. A file listed in two groups is installed once.
+core|copy|core/policy.py|scripts/agentic-ops/core/policy.py
+tool:claude|copy|claude/hooks/guard.py|.claude/hooks/guard.py
+tool:claude|copy|claude/hooks/session_start.py|.claude/hooks/session_start.py
+tool:claude|merge-json|claude/settings.json|.claude/settings.json
+tool:codex|copy|adapters/codex/guard.py|.codex/hooks/guard.py
+tool:codex|merge-json|adapters/codex/hooks.json|.codex/hooks.json
+tool:cursor|copy|adapters/cursor/guard.py|.cursor/hooks/guard.py
+tool:cursor|merge-json|adapters/cursor/hooks.json|.cursor/hooks.json
+tool:opencode|copy|adapters/opencode/agentic-ops-guard.js|.opencode/plugins/agentic-ops-guard.js
+tool:antigravity|copy|adapters/antigravity/guard.py|.agents/hooks/guard.py
+tool:antigravity|merge-json|adapters/antigravity/hooks.json|.agents/hooks.json
+githooks|copy-exec|githooks/commit-msg|.githooks/commit-msg
+githooks|copy-exec|githooks/pre-commit|.githooks/pre-commit
+githooks|copy|scripts/commit-msg-check.sh|scripts/agentic-ops/commit-msg-check.sh
+githooks|copy|commit-format.md|scripts/agentic-ops/commit-format.md
+scripts|copy|scripts/commit-msg-check.sh|scripts/agentic-ops/commit-msg-check.sh
+scripts|copy|commit-format.md|scripts/agentic-ops/commit-format.md
+scripts|copy|harness-builder.md|scripts/agentic-ops/harness-builder.md
+scripts|copy|scripts/doctor.py|scripts/agentic-ops/doctor.py
+scripts|copy|MANIFEST|scripts/agentic-ops/MANIFEST
+scripts:ps|copy|scripts/start-brief.ps1|scripts/agentic-ops/start-brief.ps1
+scripts:ps|copy|scripts/wrap-check.ps1|scripts/agentic-ops/wrap-check.ps1
+scripts:ps|copy|scripts/precommit-check.ps1|scripts/agentic-ops/precommit-check.ps1
+scripts:ps|copy|scripts/agentic-sync.ps1|scripts/agentic-ops/agentic-sync.ps1
+scripts:ps|copy|scripts/doctor.ps1|scripts/agentic-ops/doctor.ps1
+scripts:sh|copy|scripts/start-brief.sh|scripts/agentic-ops/start-brief.sh
+scripts:sh|copy|scripts/wrap-check.sh|scripts/agentic-ops/wrap-check.sh
+scripts:sh|copy|scripts/precommit-check.sh|scripts/agentic-ops/precommit-check.sh
+scripts:sh|copy|scripts/agentic-sync.sh|scripts/agentic-ops/agentic-sync.sh
+scripts:sh|copy|scripts/doctor.sh|scripts/agentic-ops/doctor.sh
+handoff:ps|copy|handoff/handoff-check.ps1|scripts/agentic-ops/handoff-check.ps1
+handoff:sh|copy|handoff/handoff-check.sh|scripts/agentic-ops/handoff-check.sh
+tests|copy|tests/layout.sh|scripts/agentic-ops/tests/layout.sh
+tests|copy|tests/layout.ps1|scripts/agentic-ops/tests/layout.ps1
+tests:ps|copy|tests/run-tests.ps1|scripts/agentic-ops/tests/run-tests.ps1
+tests:ps|copy|tests/commit-msg-check.tests.ps1|scripts/agentic-ops/tests/commit-msg-check.tests.ps1
+tests:ps|copy|tests/handoff-check.tests.ps1|scripts/agentic-ops/tests/handoff-check.tests.ps1
+tests:ps|copy|tests/precommit-check.tests.ps1|scripts/agentic-ops/tests/precommit-check.tests.ps1
+tests:ps|copy|tests/start-brief.tests.ps1|scripts/agentic-ops/tests/start-brief.tests.ps1
+tests:ps|copy|tests/sync.tests.ps1|scripts/agentic-ops/tests/sync.tests.ps1
+tests:ps|copy|tests/wrap-check.tests.ps1|scripts/agentic-ops/tests/wrap-check.tests.ps1
+tests:sh|copy|tests/run-tests.sh|scripts/agentic-ops/tests/run-tests.sh
+tests:sh|copy|tests/commit-format.tests.sh|scripts/agentic-ops/tests/commit-format.tests.sh
+tests:sh|copy|tests/scripts.tests.sh|scripts/agentic-ops/tests/scripts.tests.sh
+tests:sh|copy|tests/sync.tests.sh|scripts/agentic-ops/tests/sync.tests.sh

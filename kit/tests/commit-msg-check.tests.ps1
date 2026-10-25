@@ -1,7 +1,8 @@
 $ErrorActionPreference = 'Continue'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 # The checker is a POSIX sh script; PowerShell calls it through sh (Git for Windows ships one).
-$chk = (Resolve-Path (Join-Path $PSScriptRoot '..\scripts\commit-msg-check.sh')).Path
+. (Join-Path $PSScriptRoot 'layout.ps1')
+$chk = (Resolve-Path (Join-Path $Sc 'commit-msg-check.sh')).Path
 $tmp = Join-Path $env:TEMP ("cmc-" + [guid]::NewGuid() + ".txt")
 $utf8 = New-Object Text.UTF8Encoding $false
 $fail = 0

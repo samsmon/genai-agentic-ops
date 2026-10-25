@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Continue'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$script = (Resolve-Path (Join-Path $PSScriptRoot '..\scripts\start-brief.ps1')).Path
+. (Join-Path $PSScriptRoot 'layout.ps1')
+$script = (Resolve-Path (Join-Path $Sc 'start-brief.ps1')).Path
 $base = Join-Path $env:TEMP ("sbtest-" + [guid]::NewGuid())
 $env:GIT_AUTHOR_NAME = 't'; $env:GIT_AUTHOR_EMAIL = 't@t'; $env:GIT_COMMITTER_NAME = 't'; $env:GIT_COMMITTER_EMAIL = 't@t'
 $dash = [string][char]0x2014

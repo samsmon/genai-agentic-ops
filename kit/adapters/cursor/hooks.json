@@ -3,7 +3,7 @@
   "hooks": {
     "beforeShellExecution": [
       {
-        "command": "python -I .cursor/hooks/guard.py",
+        "command": "python -B -I .cursor/hooks/guard.py",
         "timeout": 10,
         "failClosed": false
       }

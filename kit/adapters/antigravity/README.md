@@ -1,19 +1,23 @@
-# Antigravity adapter (experimental)
+# Antigravity adapter
 
-Guard for shell commands (`run_command`) through Antigravity's PreToolUse hook. Status: experimental, not tested live (see the matrix in `../../README.md`).
+Guard for shell commands (`run_command`) through Antigravity's PreToolUse hook. Status: the `deny` answer was seen blocking a real command in Antigravity (Gemini 3.8 Flash High, Windows, 2026-10-23, one machine, one run). Everything else is from the documentation. The matrix is in `../../README.md`.
 
 ## Install
 
+Use `kit/install.*` with `--tools antigravity` (it copies the two files below and the shared core, and merges `hooks.json`). By hand:
+
 1. Copy `core/policy.py` to `scripts/agentic-ops/core/policy.py` in the project (shared by all adapters).
 2. Copy `guard.py` to `.agents/hooks/guard.py`.
-3. Merge `hooks.json` into `.agents/hooks.json` (workspace) or `~/.gemini/config/hooks.json` (global). The hook name `agentic-ops-guard` is yours to rename; `"enabled": false` on it switches it off.
+3. Merge `hooks.json` into `.agents/hooks.json` (workspace) or `~/.gemini/config/hooks.json` (global; use an absolute path there). The hook name `agentic-ops-guard` is yours to rename; `"enabled": false` on it switches it off.
 4. Hooks can be viewed and toggled in the app (Settings, Customizations, Hooks), the IDE menu, or `/hooks` in the CLI.
 5. On macOS or Linux change `python` to `python3` in `hooks.json` if needed.
 
 ## Behavior and limits
 
-- Answers `{"decision": "allow|ask|deny", "reason"}` on stdout with exit 0. The docs show the `ask` output as an example; the `deny` shape is inferred from the field description. If a denied command still runs, change `answer()` in `guard.py`.
-- Not documented: exit-code semantics, a Windows-specific command field, the working directory of hook commands, and any trust step. The command path in `hooks.json` is relative; use an absolute path if hooks run elsewhere.
+- **Answers.** `{"decision": "allow|ask|deny", "reason"}` on stdout with exit 0.
+- **`ask` is answered as `deny`.** Observed live: when the guard answered `ask` for `git push --force origin main`, the IDE ran the command without a prompt. So `guard.py` has `ASK_AS = "deny"`: a destructive command is blocked with a message telling the agent to ask the user in the chat; the user runs it in their own terminal or lifts the guard. Set `ASK_AS = "ask"` (or the environment variable `AGENTIC_OPS_ASK_AS=ask`) when your version enforces `ask`.
+- **Working directory.** The docs do not say where hook commands run. One run showed `.agents/` (a command that said `python .agents/hooks/guard.py` failed with a missing file). The `command` in `hooks.json` is therefore a one-line Python bootstrap that tries `hooks/guard.py` and then `.agents/hooks/guard.py` and runs the first that exists; if neither exists it exits 0 without output (fail open). It works from the project root and from `.agents/` (both are tested); the guard finds the core from its own location, not from the working directory. It uses `python -B -I` so no `__pycache__` is written. Quoting was checked with cmd.exe and sh; a PowerShell-based runner with unusual quoting rules is untested.
+- Not documented: exit-code semantics, a Windows-specific command field, and any trust step.
 - No read guard: the read tool's argument names are not documented.
-- Rules file size: Antigravity truncates any single rule file (`AGENTS.md`, `GEMINI.md`, `.agents/rules/*.md`) over 24,000 bytes. `start-brief` and `precommit-check` warn about it.
-- If hooks do not fire in your version, the git hooks and the written rules still apply.
+- Rules file size: Antigravity truncates any single rule file (`AGENTS.md`, `GEMINI.md`, `.agents/rules/*.md`) over 24,000 bytes. `start-brief`, `precommit-check` and `doctor` warn about it.
+- If hooks do not fire in your version, the git hooks and the written rules still apply. `doctor` proves that the guard answers correctly from here; it cannot prove that the IDE calls it.

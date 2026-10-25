@@ -1,9 +1,9 @@
 {
-  "source": "Antigravity hooks docs (antigravity.google/docs/hooks, accessed 2026-10-22): PreToolUse stdin has conversationId, workspacePaths, transcriptPath, artifactDirectoryPath, modelName, toolCall {name, args {CommandLine, Cwd, WaitMsBeforeAsync}}, stepIdx; stdout is {decision: allow|ask|deny|force_ask, reason}. The deny output shape is inferred from the field description (not shown as a full example in the docs).",
+  "source": "Antigravity hooks docs (antigravity.google/docs/hooks, accessed 2026-10-22; ask not enforced by the IDE, observed live 2026-10-23): PreToolUse stdin has conversationId, workspacePaths, transcriptPath, artifactDirectoryPath, modelName, toolCall {name, args {CommandLine, Cwd, WaitMsBeforeAsync}}, stepIdx; stdout is {decision: allow|ask|deny|force_ask, reason}. The deny output shape is inferred from the field description (not shown as a full example in the docs).",
   "cases": [
     {"name": "npm test", "expect": "allow",
      "payload": {"conversationId": "c1", "workspacePaths": ["/workspace/project"], "transcriptPath": "/t", "artifactDirectoryPath": "/a", "modelName": "m", "toolCall": {"name": "run_command", "args": {"CommandLine": "npm test", "Cwd": "/workspace/project", "WaitMsBeforeAsync": 5000}}, "stepIdx": 19}},
-    {"name": "recursive delete asks", "expect": "ask",
+    {"name": "recursive delete is blocked (the IDE does not enforce ask, so the adapter answers deny)", "expect": "deny", "message_contains": "Ask the user in the chat",
      "payload": {"conversationId": "c1", "toolCall": {"name": "run_command", "args": {"CommandLine": "rm -rf build", "Cwd": "/w"}}, "stepIdx": 20}},
     {"name": "commit with attribution trailer", "expect": "deny",
      "payload": {"conversationId": "c1", "toolCall": {"name": "run_command", "args": {"CommandLine": "git commit -m \"x\" -m \"Co-Authored-By: A <a@b.c>\"", "Cwd": "/w"}}, "stepIdx": 21}},

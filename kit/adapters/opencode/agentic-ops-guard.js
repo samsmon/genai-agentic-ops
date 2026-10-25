@@ -27,7 +27,7 @@ export function findCore(directory) {
 
 export function decide(command, core, python = process.env.AGENTIC_OPS_PYTHON || (process.platform === "win32" ? "python" : "python3")) {
   try {
-    const r = spawnSync(python, ["-I", core], { input: JSON.stringify({ command }), encoding: "utf8" })
+    const r = spawnSync(python, ["-B", "-I", core], { input: JSON.stringify({ command }), encoding: "utf8" })
     return JSON.parse(r.stdout)
   } catch {
     return { decision: "allow", message: "" }

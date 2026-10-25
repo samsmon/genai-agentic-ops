@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Continue'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$kit = Join-Path $PSScriptRoot '..'
+. (Join-Path $PSScriptRoot 'layout.ps1')
 $base = Join-Path $env:TEMP ("wctest-" + [guid]::NewGuid())
 $env:GIT_AUTHOR_NAME = 't'; $env:GIT_AUTHOR_EMAIL = 't@t'; $env:GIT_COMMITTER_NAME = 't'; $env:GIT_COMMITTER_EMAIL = 't@t'
 $today = '2026-10-11'
@@ -8,8 +8,8 @@ $today = '2026-10-11'
 $inst = Join-Path $base 'installed'
 function Install([bool]$withHandoff) {
   New-Item -ItemType Directory $inst -Force | Out-Null
-  Copy-Item (Join-Path $kit 'scripts\wrap-check.ps1') $inst -Force
-  if ($withHandoff) { Copy-Item (Join-Path $kit 'handoff\handoff-check.ps1') $inst -Force }
+  Copy-Item (Join-Path $Sc 'wrap-check.ps1') $inst -Force
+  if ($withHandoff) { Copy-Item (Join-Path $Ho 'handoff-check.ps1') $inst -Force }
 }
 function G([string]$d, [string[]]$a) { & git -C $d @a 2>$null | Out-Null }
 function Row([string]$status, [string]$agent = 'claude-code') { return "| 2026-10-11 10:00 | $agent | main | x | $status | task |`n" }

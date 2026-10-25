@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Continue'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$script = (Resolve-Path (Join-Path $PSScriptRoot '..\scripts\agentic-sync.ps1')).Path
+. (Join-Path $PSScriptRoot 'layout.ps1')
+$script = (Resolve-Path (Join-Path $Sc 'agentic-sync.ps1')).Path
 $base = Join-Path $env:TEMP ("synctest-" + [guid]::NewGuid())
 New-Item -ItemType Directory $base | Out-Null
 $env:GIT_AUTHOR_NAME = 't'; $env:GIT_AUTHOR_EMAIL = 't@example.test'; $env:GIT_COMMITTER_NAME = 't'; $env:GIT_COMMITTER_EMAIL = 't@example.test'
@@ -55,7 +56,28 @@ try {
   Expect 'project status still clean after editing an agentic file' (Clean $p.c1)
   $r = Sync $p.c1 @('commit', '-Message', 'docs: update rules')
   Expect 'commit: second commit with the edit' ($r.code -eq 0)
-  $wc = (Resolve-Path (Join-Path $PSScriptRoot '..\scripts\wrap-check.ps1')).Path
+  # bytecode caches never enter the overlay and never count as an uncommitted change
+  Put (Join-Path $p.c1 '.claude\hooks\__pycache__\guard.cpython-311.pyc') 'b'; Put (Join-Path $p.c1 '.claude\stray.pyc') 'b'
+  Put (Join-Path $p.c1 '.claude\notes.md') 'notes'
+  $r = Sync $p.c1 @('status', '-Brief')
+  Expect 'status: .pyc and __pycache__ are not counted, the real edit is' ($r.out -match 'uncommitted=1 ahead')
+  $r = Sync $p.c1 @('commit', '-Message', 'docs: add agent notes')
+  $tracked = @(& git "--git-dir=$($p.c1)\.git\agentic" "--work-tree=$($p.c1)" ls-files) -join ' '
+  Expect 'commit: __pycache__ and .pyc files are not added to the overlay' (($r.code -eq 0) -and ($tracked -notmatch '__pycache__|\.pyc'))
+  $r = Sync $p.c1 @('status', '-Brief')
+  Expect 'status after commit: clean even with bytecode on disk' ($r.out -match 'uncommitted=0 ahead')
+  # sh is found in the Git for Windows folders when it is not on PATH
+  $gitSh = @("$env:ProgramFiles\Git\bin\sh.exe", "$env:ProgramFiles\Git\usr\bin\sh.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+  $gitCmd = "$env:ProgramFiles\Git\cmd"
+  if ($gitSh -and (Test-Path $gitCmd)) {
+    $savedPath = $env:Path
+    $env:Path = "$env:SystemRoot\System32;$env:SystemRoot;$env:SystemRoot\System32\WindowsPowerShell\v1.0;$gitCmd"
+    $noSh = -not (Get-Command sh -ErrorAction SilentlyContinue)
+    $r = Sync $p.c1 @('commit', '-Message', 'Update stuff')
+    $env:Path = $savedPath
+    Expect 'commit: sh is found in Program Files\Git when it is not on PATH (bad message still rejected)' ($noSh -and ($r.code -eq 1) -and ($r.out -notmatch 'sh not found'))
+  } else { Write-Output 'SKIP sh lookup test (Git for Windows not in Program Files)' }
+  $wc = (Resolve-Path (Join-Path $Sc 'wrap-check.ps1')).Path
   function Wrap([string]$d) { return ((& powershell -NoProfile -File $wc -Root $d -Agent claude-code -Today 2026-01-01) -join "`n") }
   Expect 'wrap-check: unpushed overlay commits -> FAIL' ((Wrap $p.c1) -match 'FAIL\s+OVERLAY: \d+ overlay commit')
   $r = Sync $p.c1 @('commit')
@@ -124,7 +146,7 @@ try {
   Expect 'status -Brief before init -> not initialised' ($r.out -match 'not initialised')
   $r = Sync $p.c1 @('status', '-Brief')
   Expect 'status -Brief after init -> branch and counts' ($r.out -match 'OVERLAY: agentic-ops uncommitted=\d+ ahead=\d+ behind=\d+')
-  $sb = (Resolve-Path (Join-Path $PSScriptRoot '..\scripts\start-brief.ps1')).Path
+  $sb = (Resolve-Path (Join-Path $Sc 'start-brief.ps1')).Path
   $o = (& powershell -NoProfile -File $sb -Root $p.c1) -join "`n"
   Expect 'start-brief: [OVERLAY] section shown once the overlay exists' (($o -match '\[OVERLAY\]') -and ($o -match 'OVERLAY: agentic-ops'))
   $o = (& powershell -NoProfile -File $sb -Root $p6.c1) -join "`n"

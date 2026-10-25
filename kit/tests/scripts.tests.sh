@@ -1,7 +1,7 @@
 #!/bin/bash
 # Tests for the sh versions: start-brief.sh, wrap-check.sh, handoff-check.sh, precommit-check.sh, commit-msg.
 # Run: bash kit/tests/scripts.tests.sh   (needs git; uses temporary repositories)
-KIT=$(cd "$(dirname "$0")/.." && pwd)
+. "$(dirname "$0")/layout.sh"
 BASE=$(mktemp -d)
 trap 'rm -rf "$BASE"' EXIT
 export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t
@@ -26,7 +26,7 @@ new_env() {  # $1 = extra rows for the main table
   git clone -q "$BARE" "$C2" 2>/dev/null
 }
 commit_in() { echo "$2" > "$1/$2"; g "$1" add -A; g "$1" commit -q -m "$2"; }
-brief() { OUT=$(sh "$KIT/scripts/start-brief.sh" "$1" 2>&1); CODE=$?; }
+brief() { OUT=$(sh "$SC/start-brief.sh" "$1" 2>&1); CODE=$?; }
 
 # ---- start-brief.sh
 new_env; brief "$C1"
@@ -77,7 +77,7 @@ new_env; rm -rf "$BARE"; brief "$C1"
 
 # ---- wrap-check.sh (installed layout: copied next to handoff-check.sh when needed)
 INST=$BASE/inst
-install_scripts() { rm -rf "$INST"; mkdir -p "$INST"; cp "$KIT/scripts/wrap-check.sh" "$INST/"; [ "$1" = handoff ] && cp "$KIT/handoff/handoff-check.sh" "$INST/"; }
+install_scripts() { rm -rf "$INST"; mkdir -p "$INST"; cp "$SC/wrap-check.sh" "$INST/"; [ "$1" = handoff ] && cp "$HO/handoff-check.sh" "$INST/"; }
 wrap() { OUT=$(sh "$INST/wrap-check.sh" --root "$1" --agent claude-code --today 2026-10-11 "${@:2}" 2>&1); CODE=$?; }
 install_scripts
 new_env; wrap "$C1"
@@ -129,7 +129,7 @@ add_disc() {  # $1 name, $2 reviewed list, $3 status, $4 1 if listed in NOW.md
   printf -- '---\ndate: 2026-10-11\nstatus: %s\nreviewed_by: %s\n---\nbody\n' "${3:-done}" "${2:-[]}" > "$HC/projects/x/discussion/$1"
   [ "${4:-1}" = 1 ] && printf '\n## Awaiting review\n- projects/x/discussion/%s (by claude-code)\n' "$1" >> "$HC/NOW.md"
 }
-hcheck() { OUT=$(sh "$KIT/handoff/handoff-check.sh" --root "$HC" --agent "${1:-claude-code}" --today 2026-10-11 2>&1); CODE=$?; }
+hcheck() { OUT=$(sh "$HO/handoff-check.sh" --root "$HC" --agent "${1:-claude-code}" --today 2026-10-11 2>&1); CODE=$?; }
 hc_env; hcheck
 [ $CODE = 0 ] && has '\[HANDOFF\] 0 failed'; expect 'handoff: all good -> exit 0' $?
 hc_env 2026-10-09; hcheck
@@ -155,7 +155,7 @@ pc_env() { rm -rf "$PC"; mkdir -p "$PC"; git -C "$PC" init -q; }
 pc() {  # $1 = file name, $2 = content; stages it and runs the check
   pc_env; printf '%s' "$2" > "$PC/$1"; g "$PC" add -A
   printf '%s\n' "$1" > "$BASE/staged.txt"
-  OUT=$(sh "$KIT/scripts/precommit-check.sh" --root "$PC" --staged-file "$BASE/staged.txt" 2>&1); CODE=$?
+  OUT=$(sh "$SC/precommit-check.sh" --root "$PC" --staged-file "$BASE/staged.txt" 2>&1); CODE=$?
 }
 fake="sk-ant-$(printf 'a1%.0s' $(seq 15))"
 pc a.md "key $fake"
@@ -173,31 +173,31 @@ pc e.md 'token: abc'
 pc video.mp4 x
 [ $CODE = 1 ] && has 'large file'; expect 'precommit: media extension -> 1' $?
 pc_env; head -c 6291456 /dev/zero > "$PC/big.dat"; g "$PC" add -A; echo big.dat > "$BASE/staged.txt"
-OUT=$(sh "$KIT/scripts/precommit-check.sh" --root "$PC" --staged-file "$BASE/staged.txt" 2>&1); CODE=$?
+OUT=$(sh "$SC/precommit-check.sh" --root "$PC" --staged-file "$BASE/staged.txt" 2>&1); CODE=$?
 [ $CODE = 1 ]; expect 'precommit: file over 5 MB -> 1' $?
-OUT=$(ALLOW_BIG_FILES=1 sh "$KIT/scripts/precommit-check.sh" --root "$PC" --staged-file "$BASE/staged.txt" 2>&1); CODE=$?
+OUT=$(ALLOW_BIG_FILES=1 sh "$SC/precommit-check.sh" --root "$PC" --staged-file "$BASE/staged.txt" 2>&1); CODE=$?
 [ $CODE = 0 ] && has 'large file'; expect 'precommit: ALLOW_BIG_FILES=1 -> 0' $?
 pc_env; mkdir "$PC/private"; printf 'SOME_API_KEY=%s' "$(printf 'q1%.0s' $(seq 20))" > "$PC/private/keys.env"; g "$PC" add -A; echo private/keys.env > "$BASE/staged.txt"
-OUT=$(SECRET_SCAN_SKIP='private/*' sh "$KIT/scripts/precommit-check.sh" --root "$PC" --staged-file "$BASE/staged.txt" 2>&1); CODE=$?
+OUT=$(SECRET_SCAN_SKIP='private/*' sh "$SC/precommit-check.sh" --root "$PC" --staged-file "$BASE/staged.txt" 2>&1); CODE=$?
 [ $CODE = 0 ]; expect 'precommit: SECRET_SCAN_SKIP path -> 0' $?
 pc_env; head -c 500 /dev/zero | tr '\0' x > "$PC/AGENTS.md"; echo AGENTS.md > "$BASE/staged.txt"
-OUT=$(sh "$KIT/scripts/precommit-check.sh" --root "$PC" --staged-file "$BASE/staged.txt" --max-rules-bytes 100 2>&1); CODE=$?
+OUT=$(sh "$SC/precommit-check.sh" --root "$PC" --staged-file "$BASE/staged.txt" --max-rules-bytes 100 2>&1); CODE=$?
 [ $CODE = 0 ] && has WARNING; expect 'precommit: big rules file -> 0 + WARNING' $?
 hasnt Antigravity; expect 'precommit: small rules file -> no Antigravity warning' $?
 pc_env; head -c 25000 /dev/zero | tr '\0' x > "$PC/AGENTS.md"; echo AGENTS.md > "$BASE/staged.txt"
-OUT=$(sh "$KIT/scripts/precommit-check.sh" --root "$PC" --staged-file "$BASE/staged.txt" --max-rules-bytes 100000 2>&1); CODE=$?
+OUT=$(sh "$SC/precommit-check.sh" --root "$PC" --staged-file "$BASE/staged.txt" --max-rules-bytes 100000 2>&1); CODE=$?
 [ $CODE = 0 ] && has Antigravity; expect 'precommit: rules file over 24000 B -> 0 + Antigravity WARNING' $?
 
 # ---- commit-msg hook
 msg=$BASE/msg
-printf 'feat: x\n' > "$msg"; sh "$KIT/githooks/commit-msg" "$msg" >/dev/null 2>&1
+printf 'feat: x\n' > "$msg"; sh "$GH/commit-msg" "$msg" >/dev/null 2>&1
 expect 'commit-msg: clean message -> pass' $?
-printf 'feat: x\n\nCo-Authored-By: Someone <a@b.c>\n' > "$msg"; sh "$KIT/githooks/commit-msg" "$msg" >/dev/null 2>&1
+printf 'feat: x\n\nCo-Authored-By: Someone <a@b.c>\n' > "$msg"; sh "$GH/commit-msg" "$msg" >/dev/null 2>&1
 [ $? = 1 ]; expect 'commit-msg: Co-Authored-By -> rejected' $?
-ALLOW_AGENT_TRAILER=1 sh "$KIT/githooks/commit-msg" "$msg" >/dev/null 2>&1
+ALLOW_AGENT_TRAILER=1 sh "$GH/commit-msg" "$msg" >/dev/null 2>&1
 expect 'commit-msg: ALLOW_AGENT_TRAILER=1 -> pass' $?
 printf 'feat: x\n' > "$msg"
-pc_env; (cd "$PC" && GIT_AUTHOR_NAME='Claude' GIT_AUTHOR_EMAIL='noreply@anthropic.com' sh "$KIT/githooks/commit-msg" "$msg" >/dev/null 2>&1)
+pc_env; (cd "$PC" && GIT_AUTHOR_NAME='Claude' GIT_AUTHOR_EMAIL='noreply@anthropic.com' sh "$GH/commit-msg" "$msg" >/dev/null 2>&1)
 [ $? = 1 ]; expect 'commit-msg: agent identity -> rejected' $?
 
 [ $fail = 0 ] && echo 'ALL TESTS PASSED' || echo "$fail FAILED"

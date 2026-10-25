@@ -1,9 +1,9 @@
 #!/bin/bash
 # Tests for scripts/commit-msg-check.sh (Conventional Commits + Chris Beams) and its use by githooks/commit-msg.
 # Run: bash kit/tests/commit-format.tests.sh   (needs git; uses temporary repositories)
-KIT=$(cd "$(dirname "$0")/.." && pwd)
-CHK="$KIT/scripts/commit-msg-check.sh"
-HOOK="$KIT/githooks/commit-msg"
+. "$(dirname "$0")/layout.sh"
+CHK="$SC/commit-msg-check.sh"
+HOOK="$GH/commit-msg"
 BASE=$(mktemp -d)
 trap 'rm -rf "$BASE"' EXIT
 export GIT_AUTHOR_NAME=tester GIT_AUTHOR_EMAIL=t@example.test GIT_COMMITTER_NAME=tester GIT_COMMITTER_EMAIL=t@example.test
@@ -71,7 +71,7 @@ sh "$CHK" >/dev/null 2>&1; [ $? = 2 ]; expect 'usage error without a file -> exi
 sh "$CHK" "$BASE/missing" >/dev/null 2>&1; [ $? = 2 ]; expect 'usage error with a missing file -> exit 2' $?
 
 # ---- the git hook: attribution checks stay, format check added
-export AGENTIC_OPS_DIR="$KIT/scripts"
+export AGENTIC_OPS_DIR="$SC"
 hook() { printf '%b' "$1" > "$BASE/m"; sh "$HOOK" "$BASE/m" >/dev/null 2>&1; }
 hook 'feat: add login\n'; expect 'hook: valid message passes' $?
 hook 'Update stuff\n'; [ $? = 1 ]; expect 'hook: format violation rejected' $?
@@ -89,7 +89,7 @@ printf 'feat: add login\n' > "$BASE/m"
 
 # ---- through real git
 R=$BASE/repo; git init -q "$R"; git -C "$R" config user.name tester; git -C "$R" config user.email t@example.test
-git -C "$R" config core.hooksPath "$KIT/githooks"; echo a > "$R/a"; git -C "$R" add a
+git -C "$R" config core.hooksPath "$GH"; echo a > "$R/a"; git -C "$R" add a
 git -C "$R" commit -q -m 'Update stuff' >/dev/null 2>&1; [ $? != 0 ]; expect 'git commit: bad message is refused' $?
 git -C "$R" commit -q -m 'feat: add a' >/dev/null 2>&1; expect 'git commit: good message is accepted' $?
 echo b > "$R/b"; git -C "$R" add b

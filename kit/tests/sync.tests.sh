@@ -1,7 +1,7 @@
 #!/bin/bash
 # Tests for agentic-sync.sh (hidden mode). Run: bash kit/tests/sync.tests.sh   (needs git; uses temporary repositories)
-KIT=$(cd "$(dirname "$0")/.." && pwd)
-SYNC="$KIT/scripts/agentic-sync.sh"
+. "$(dirname "$0")/layout.sh"
+SYNC="$SC/agentic-sync.sh"
 BASE=$(mktemp -d)
 trap 'rm -rf "$BASE"' EXIT
 export GIT_AUTHOR_NAME=tester GIT_AUTHOR_EMAIL=t@example.test GIT_COMMITTER_NAME=tester GIT_COMMITTER_EMAIL=t@example.test
@@ -27,7 +27,7 @@ mkproject() {  # $1 = name; sets BARE, C1
   echo 'ops' > "$C1/docs/CURRENT_OPS.md"; echo '{}' > "$C1/.claude/settings.json"
   echo 'x' > "$C1/scripts/agentic-ops/tool.sh"; echo '#!/bin/sh' > "$C1/.githooks/pre-commit"
 }
-wrapc() { OUT=$(sh "$KIT/scripts/wrap-check.sh" --root "$1" --agent claude-code --today 2026-01-01 "${@:2}" 2>&1); }
+wrapc() { OUT=$(sh "$SC/wrap-check.sh" --root "$1" --agent claude-code --today 2026-01-01 "${@:2}" 2>&1); }
 project_clean() { [ -z "$(git -C "$1" status --porcelain)" ]; }
 
 # ---- first device
@@ -58,6 +58,15 @@ OUT=$(cd "$C1" && GIT_AUTHOR_NAME=Claude GIT_AUTHOR_EMAIL=noreply@anthropic.com 
 project_clean "$C1"; expect 'project status still clean after editing an agentic file' $?
 sync "$C1" commit -m 'docs: update rules'
 [ $CODE = 0 ]; expect 'commit: second commit with the edit' $?
+# bytecode caches never enter the overlay and never count as an uncommitted change
+mkdir -p "$C1/.claude/hooks/__pycache__"; echo b > "$C1/.claude/hooks/__pycache__/guard.cpython-311.pyc"; echo b > "$C1/.claude/stray.pyc"
+echo 'notes' > "$C1/.claude/notes.md"
+sync "$C1" status --brief
+has 'uncommitted=1 ahead'; expect 'status: .pyc and __pycache__ are not counted, the real edit is' $?
+sync "$C1" commit -m 'docs: add agent notes'
+n=$(git --git-dir="$C1/.git/agentic" --work-tree="$C1" ls-files | grep -c -E '__pycache__|[.]pyc$'); [ "$n" = 0 ]; expect 'commit: __pycache__ and .pyc files are not added to the overlay' $?
+sync "$C1" status --brief
+has 'uncommitted=0 ahead'; expect 'status after commit: clean even with bytecode on disk' $?
 wrapc "$C1"
 has 'FAIL +OVERLAY: [0-9]+ overlay commit'; expect 'wrap-check: unpushed overlay commits -> FAIL' $?
 wrapc "$C1" --git-policy user-only-git
@@ -101,7 +110,7 @@ sync "$C2" pull
 [ "$(cat "$C2/docs/CURRENT_OPS.md")" = 'from c2' ]; expect 'pull: diverged leaves local file untouched' $?
 sync "$C2" status --brief
 has 'ahead=1'; expect 'status --brief: ahead count' $?
-OUT=$(sh "$KIT/scripts/start-brief.sh" "$C2" 2>&1)
+OUT=$(sh "$SC/start-brief.sh" "$C2" 2>&1)
 has '\[OVERLAY\]' && has 'OVERLAY: agentic-ops uncommitted=[0-9]+ ahead=1'; expect 'start-brief: [OVERLAY] section shown once the overlay exists' $?
 
 # ---- local file differs from the overlay copy
@@ -156,7 +165,7 @@ sync "$BARE2" push
 mkproject p6
 sync "$C1" pull
 [ $CODE = 2 ]; expect 'pull before init -> exit 2' $?
-OUT=$(sh "$KIT/scripts/start-brief.sh" "$C1" 2>&1)
+OUT=$(sh "$SC/start-brief.sh" "$C1" 2>&1)
 ! has '\[OVERLAY\]'; expect 'start-brief: no [OVERLAY] section before init' $?
 sync "$C1" status --brief
 has 'not initialised'; expect 'status --brief before init -> not initialised' $?

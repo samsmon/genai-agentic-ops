@@ -1,15 +1,20 @@
-"""PreToolUse guard for Antigravity (experimental): thin adapter over the agent-neutral policy core.
+"""PreToolUse guard for Antigravity: thin adapter over the agent-neutral policy core.
 
 Input  (stdin, camelCase): {"toolCall": {"name": "run_command", "args": {"CommandLine": "...", "Cwd": "..."}}, "stepIdx": 19, ...}
 Output (stdout): {"decision": "allow|ask|deny", "reason": "..."} and exit 0.
-Experimental: the docs show the input and the "ask" output verbatim; the "deny" output shape (decision + reason)
-is taken from the field description and was not shown as a full example. Not run inside Antigravity yet.
+
+Live evidence (Gemini 3.8 Flash High on Windows, 2026-10-23): a "deny" answer blocks the command ("tool call denied by
+pre-tool hook"); an "ask" answer did NOT stop `git push --force`, the IDE ran it without a prompt. So the core's "ask" is
+answered as "deny" (ASK_AS = "deny") with a message that tells the agent to ask the user in the chat. The user then runs
+the command in their own terminal, or sets ASK_AS = "ask" (or env AGENTIC_OPS_ASK_AS=ask) once the IDE enforces it.
 Fails open: odd input or a missing core answers allow.
 """
 import importlib.util
 import json
 import os
 import sys
+
+ASK_AS = os.environ.get("AGENTIC_OPS_ASK_AS", "deny")  # "deny" (default) or "ask"
 
 
 def load_policy():
@@ -47,6 +52,9 @@ def main():
         sys.stderr.write("agentic-ops guard: core/policy.py not found, guard disabled (see kit/README.md install layout)\n")
         answer("allow")
     decision, message = policy.evaluate(command=command)
+    if decision == "ask" and ASK_AS == "deny":
+        answer("deny", message + " Antigravity does not enforce an ask answer, so this command is blocked. "
+                                 "Ask the user in the chat; the user runs it in their own terminal or lifts the guard.")
     answer(decision, message)
 
 

@@ -5,7 +5,7 @@
         "matcher": "run_command",
         "hooks": [
           {
-            "command": "python -I .agents/hooks/guard.py",
+            "command": "python -B -I -c \"import os,runpy;p=next((q for q in ('hooks/guard.py','.agents/hooks/guard.py') if os.path.isfile(q)),None);p and runpy.run_path(p,run_name='__main__')\"",
             "timeout": 10
           }
         ]

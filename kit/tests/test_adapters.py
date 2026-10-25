@@ -75,8 +75,13 @@ for c in cases("antigravity"):
     ok = r.returncode == 0 and out.get("decision") == c["expect"]
     if ok and c["expect"] != "allow":
         ok = bool(out.get("reason"))
+    if ok and c.get("message_contains"):
+        ok = c["message_contains"] in out.get("reason", "")
     expect("antigravity: " + c["name"], ok)
 expect("antigravity: broken input answers allow", json.loads(run(anti, "not json").stdout).get("decision") == "allow")
+ask_case = [c for c in cases("antigravity") if c["expect"] == "deny" and "recursive" in c["name"]][0]
+r = run(anti, ask_case["payload"], env={"AGENTIC_OPS_ASK_AS": "ask"})
+expect("antigravity: AGENTIC_OPS_ASK_AS=ask restores the ask answer", json.loads(r.stdout).get("decision") == "ask")
 
 # --- hooks.json files are valid and point at the installed guard path
 for tool, key_path in (("codex", ".codex/hooks/guard.py"), ("cursor", ".cursor/hooks/guard.py"), ("antigravity", ".agents/hooks/guard.py")):
@@ -88,9 +93,39 @@ for tool, key_path in (("codex", ".codex/hooks/guard.py"), ("cursor", ".cursor/h
     except ValueError:
         expect(f"{tool}: hooks.json is valid JSON", False)
 
+# --- every hook command uses python -B (no __pycache__ in tracked or overlay folders)
+for rel in ("claude/settings.json", "adapters/codex/hooks.json", "adapters/cursor/hooks.json", "adapters/antigravity/hooks.json"):
+    text = open(os.path.join(KIT, *rel.split("/")), encoding="utf-8").read()
+    cmds = [m for m in __import__("re").findall(r'"(?:command|commandWindows)":\s*"((?:[^"\\]|\\.)*)"', text)]
+    expect(f"{rel}: every python command has -B", bool(cmds) and all(" -B " in c for c in cmds if c.startswith("python")))
+js = open(os.path.join(KIT, "adapters", "opencode", "agentic-ops-guard.js"), encoding="utf-8").read()
+expect("opencode plugin spawns python with -B", '["-B", "-I", core]' in js)
+
+# --- the Antigravity hook command works from the project root and from .agents/, and fails open when no guard is found
+with tempfile.TemporaryDirectory() as proj:
+    shutil.copytree(os.path.join(KIT, "core"), os.path.join(proj, "scripts", "agentic-ops", "core"), ignore=shutil.ignore_patterns("__pycache__"))
+    os.makedirs(os.path.join(proj, ".agents", "hooks"))
+    shutil.copy(os.path.join(KIT, "adapters", "antigravity", "guard.py"), os.path.join(proj, ".agents", "hooks", "guard.py"))
+    shutil.copy(os.path.join(KIT, "adapters", "antigravity", "hooks.json"), os.path.join(proj, ".agents", "hooks.json"))
+    hook = json.load(open(os.path.join(proj, ".agents", "hooks.json"), encoding="utf-8"))["agentic-ops-guard"]["PreToolUse"][0]["hooks"][0]["command"]
+    bad_payload = json.dumps({"toolCall": {"name": "run_command", "args": {"CommandLine": "git push --force origin main"}}})
+    env = {k: v for k, v in os.environ.items() if k != "AGENTIC_OPS_POLICY"}
+    for label, cwd in (("project root", proj), (".agents folder", os.path.join(proj, ".agents"))):
+        r = subprocess.run(hook, shell=True, cwd=cwd, input=bad_payload, capture_output=True, text=True, env=env)
+        try:
+            got = json.loads(r.stdout).get("decision")
+        except ValueError:
+            got = None
+        expect(f"antigravity hooks.json command works with cwd = {label}", r.returncode == 0 and got == "deny")
+        left = [d for d, _, fs in os.walk(proj) if "__pycache__" in d]
+        expect(f"antigravity hook run from {label} leaves no __pycache__", not left)
+    with tempfile.TemporaryDirectory() as elsewhere:
+        r = subprocess.run(hook, shell=True, cwd=elsewhere, input=bad_payload, capture_output=True, text=True, env=env)
+        expect("antigravity hook fails open and silent when neither guard path exists", r.returncode == 0 and r.stdout == "")
+
 # --- installed layout: core in scripts/agentic-ops/core, adapter in the tool's own folder
 with tempfile.TemporaryDirectory() as proj:
-    shutil.copytree(os.path.join(KIT, "core"), os.path.join(proj, "scripts", "agentic-ops", "core"))
+    shutil.copytree(os.path.join(KIT, "core"), os.path.join(proj, "scripts", "agentic-ops", "core"), ignore=shutil.ignore_patterns("__pycache__"))
     for tool, folder in (("codex", ".codex"), ("cursor", ".cursor"), ("antigravity", ".agents")):
         os.makedirs(os.path.join(proj, folder, "hooks"))
         shutil.copy(os.path.join(KIT, "adapters", tool, "guard.py"), os.path.join(proj, folder, "hooks", "guard.py"))

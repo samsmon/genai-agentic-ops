@@ -17,10 +17,26 @@ Honest limits: the guard is one neutral core (`core/policy.py`) with one thin ad
 | hidden mode | `scripts/agentic-sync.sh`, `scripts/agentic-sync.ps1` | Keeps the agentic files out of the project history and syncs them between devices through an overlay repository (see below) | Any agent, any shell |
 | handoff (optional) | `handoff/handoff-check.*` | Checks the cross-agent review protocol (rule 13) | Any agent |
 | harness builder | `harness-builder.md` | Detail for rule 12 (recommend a harness when work repeats) | Text |
+| installer | `install.py`, `install.sh`, `install.ps1`, `MANIFEST` | Does the mechanical part of the bootstrap the same way every time: copies only the files for the tools and modules you pick (`MANIFEST` is the one list), merges the rules block into `AGENTS.md`, adds pointer lines, creates the ops log, writes `scripts/agentic-ops/INSTALLED.json`, and runs `agentic-sync init` in hidden mode. Dry run unless `--apply`; safe to run twice; never commits or pushes. Python 3 does the work, the two entries only find it | Any agent or you |
+| doctor | `scripts/doctor.py`, `doctor.sh`, `doctor.ps1` | Read-only report, one `PASS`, `WARN`, `FAIL` or `UNKNOWN` line per check: rules block and size, installed files against the receipt, bytecode and duplicate copies, adapters that were not chosen, `core.hooksPath`, whether the guard answers correctly for sample commands, hidden-mode overlay state. `UNKNOWN` is what cannot be proven from here (for example that a hook fires inside an IDE). No overall score | Any agent or you |
 
 Every script exists in two forms: `.ps1` (Windows PowerShell 5.1 or PowerShell 7) and `.sh` (POSIX sh; `bash` for the tests). Use the one the machine has; they behave the same and have the same test cases.
 
 ## Install layout
+
+Preferred: let the installer do it. It is a dry run (nothing is written) until you add `--apply`:
+
+```
+python kit/install.py --tools antigravity,claude --modules guard,githooks,scripts --shell ps --visibility hidden --policy agent-commits --project <project>
+python kit/install.py ... --apply                     # writes; run it again any time, a second run changes nothing
+python <scratch>/install.py --pin <sha> ...           # no checkout: downloads the kit files for that commit from raw.githubusercontent.com
+powershell -File kit/install.ps1 -Tools antigravity -Modules guard,githooks,scripts -Shell ps -Visibility hidden -Apply     # same behaviour
+sh kit/install.sh --tools antigravity ...             # same behaviour
+```
+
+Options: `--tools` (claude, codex, cursor, opencode, antigravity; none is fine), `--modules` (guard, githooks, scripts, handoff, tests), `--shell ps|sh` (which script set), `--visibility hidden|visible`, `--policy agent-commits|user-only-git`, `--remote` (overlay remote), `--force` (overwrite files that differ; otherwise they stop the install with a diff), `--local-only`, `--skip-sync`. Exit codes: 0 ok (also a dry run), 2 usage or not a git work tree, 3 hidden mode but agentic files are already tracked, 4 a decision is needed (files differ or the `AGENTS.md` markers are damaged; nothing is written), 5 the hidden-mode sync stopped, 6 the kit could not be fetched. Check the result with `doctor`.
+
+What it produces is the table below, by hand if you prefer:
 
 Copy, never overwrite; show diffs for files that already exist. Merge `claude/settings.json` into an existing `.claude/settings.json`.
 
@@ -106,7 +122,7 @@ Limits you should know about:
 | Codex | Yes (global, then each directory from the repo root; 32 KiB combined by default) | `.codex/hooks.json`, PreToolUse, matcher `Bash`. "Ask" is not supported there, so risky commands are blocked with a "get confirmation" message | Yes | No (not installed here) |
 | Cursor | Yes (project root `AGENTS.md`; the CLI also reads `CLAUDE.md`) | `.cursor/hooks.json`, `beforeShellExecution`, native. Cursor can also load the Claude hooks by itself (third-party hooks, on by default); do not enable both for the same command | Yes, shell commands only. No read guard: Cursor's read hook has no `limit` field | No (not installed here) |
 | OpenCode | Yes (`AGENTS.md`; falls back to `CLAUDE.md` only when `AGENTS.md` is absent) | `.opencode/plugins/agentic-ops-guard.js`, `tool.execute.before`; a throw blocks. "Ask" becomes a block | Experimental: the shell tool's argument name is not in the docs, so the plugin tries `command`, then `cmd` | No (not installed here; the plugin is tested with Node and fixture inputs) |
-| Antigravity | Yes (`AGENTS.md` and `GEMINI.md`, scoped per directory; each rule file is truncated above 24,000 bytes) | `.agents/hooks.json`, PreToolUse, matcher `run_command` | Experimental: the docs show the input and the "ask" output, not a full "deny" example; the deny shape is inferred | No. The IDE is installed on the author's machine, but a hook only fires inside a live agent session, which was not run |
+| Antigravity | Yes (`AGENTS.md` and `GEMINI.md`, scoped per directory; each rule file is truncated above 24,000 bytes) | `.agents/hooks.json`, PreToolUse, matcher `run_command`. The command is a one-line bootstrap that works from the project root and from `.agents/` | Yes. The `deny` shape is inferred from the field description (the docs show only an `ask` example) | `deny` blocked a real command in Antigravity on Windows (Gemini 3.8 Flash High, 2026-10-23, one machine, one run). `ask` is not enforced by the IDE (a force push ran after an `ask` answer), so the adapter answers `deny` for what the core asks about. The cwd-independent command of v2.3 has local tests only; it has not been run inside the IDE |
 
 Cross-tool layers that need no hook support: the git hooks (`githooks/`), the scripts (any agent that can run a shell), and the written rules. They are the whole story for any tool or version whose hook adapter is missing or wrong.
 
@@ -127,6 +143,7 @@ Under `user-only-git` the agent cannot commit, so uncommitted changes are report
 ```
 powershell -NoProfile -File tests/run-tests.ps1     # all PowerShell suites, the Python tests (guard, policy core, adapters, rules block), and every *.tests.sh suite if bash exists
 sh tests/run-tests.sh                               # the Python tests and every *.tests.sh suite (scripts, commit format, agentic-sync)
+python -I tests/test_install.py                    # installer and doctor on temporary projects (also part of the two runners)
 ```
 
-Tests build temporary git repositories and delete them afterwards. The `wrap-check` PowerShell suite is the slowest (use `-Skip wrap-check`).
+The shell and PowerShell suites also run from the installed layout (install with `--modules ...,tests`, then `sh scripts/agentic-ops/tests/run-tests.sh` or `powershell -File scripts/agentic-ops/tests/run-tests.ps1`): they find the scripts through `tests/layout.sh` / `layout.ps1`, which detects whether it sits in the kit or in `scripts/agentic-ops/tests`. The Python suites need the kit folders and are skipped there. Tests build temporary git repositories and delete them afterwards. The `wrap-check` PowerShell suite is the slowest (use `-Skip wrap-check`).
