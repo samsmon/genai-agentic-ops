@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.3.2 - unreleased (date and SHA are filled in when committed)
+- **Fix, important for Antigravity:** the `hooks.json` command of v2.3.0 and v2.3.1 was a one-line Python script with nested double quotes. The IDE splits the command on spaces and runs it with no shell, so Python got `"import` and failed with `SyntaxError`; every shell command was then refused (a non-zero hook exit blocks). Found in a live probe (Gemini 3.8 Flash High, Windows, 2026-10-25); the earlier tests ran the command through cmd.exe and sh, which parse the quotes. If you installed v2.3.0 or v2.3.1 with the antigravity tool, update to this version. The command is now `python -B -I hooks/guard.py` (the hook runs from `.agents/`).
+- `doctor` and the tests now split the command on spaces and run it with no shell from `.agents/`, check that it has no quotes or shell characters, and a test installs over a v2.3.x entry and checks it is replaced in place while the user's own hooks stay.
+- The Part B rules block is unchanged. `bca34a37edd8725fa2875c0f831d583c5500f7c1` (v2.3.0) and `8fcf69b0e9e97c698a489d133f523c6d99c83a0f` (v2.3.1) stay valid for the rules; their Antigravity adapter is the broken one.
+
 ## v2.3.1 - 2026-10-25 (commit `8fcf69b0e9e97c698a489d133f523c6d99c83a0f`)
 - Fix: `install.py --shell ps` looked for `agentic-sync.ps` instead of `agentic-sync.ps1`, so a hidden-mode install on Windows (where `ps` is the default shell) stopped with exit code 2 after copying the files. Found in a live run (Gemini 3.8 Flash High, 2026-10-25). `kit/tests/test_install.py` now installs in hidden mode through each shell entry and does not skip the sync step.
 - Note: Antigravity loads `.agents/hooks.json` from the opened workspace root. In that live run the parent folder was open, the guard never loaded and a force push ran. The installer prints a reminder, `doctor` reports it as UNKNOWN, and the READMEs say so. The pin `bca34a37edd8725fa2875c0f831d583c5500f7c1` (v2.3.0) stays valid for the rules, but its installer cannot finish a hidden-mode install on Windows; use `8fcf69b0e9e97c698a489d133f523c6d99c83a0f` (v2.3.1). The Part B rules block is unchanged.

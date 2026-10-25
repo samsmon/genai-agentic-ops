@@ -196,6 +196,20 @@ try:
     r = inst(p7, "--tools", "claude", "--modules", "guard", "--shell", "sh", "--visibility", "visible", "--apply")
     expect("merge: second run changes nothing", "Nothing to do" in r.stdout)
 
+    # ---- an installed v2.3.0 / v2.3.1 Antigravity entry (quoted one-liner) is replaced in place by the plain command
+    p7b = mkproject(BASE, "merge-ag")
+    os.makedirs(os.path.join(p7b, ".agents"))
+    quoted = 'python -B -I -c "import os,runpy;p=next((q for q in (\'hooks/guard.py\',\'.agents/hooks/guard.py\') if os.path.isfile(q)),None);p and runpy.run_path(p,run_name=\'__main__\')"'
+    prev = {"agentic-ops-guard": {"PreToolUse": [{"matcher": "run_command", "hooks": [{"command": quoted, "timeout": 10}]}]},
+            "my-own-hook": {"PreToolUse": [{"matcher": "run_command", "hooks": [{"command": "echo mine", "timeout": 5}]}]}}
+    with open(os.path.join(p7b, ".agents", "hooks.json"), "w") as f:
+        json.dump(prev, f)
+    inst(p7b, "--tools", "antigravity", "--modules", "guard", "--shell", "sh", "--visibility", "visible", "--apply")
+    hj = json.load(open(os.path.join(p7b, ".agents", "hooks.json"), encoding="utf-8"))
+    cmd_new = hj["agentic-ops-guard"]["PreToolUse"][0]["hooks"][0]["command"]
+    expect("merge-ag: the quoted v2.3 entry becomes the plain command, in place", cmd_new == "python -B -I hooks/guard.py" and len(hj["agentic-ops-guard"]["PreToolUse"]) == 1)
+    expect("merge-ag: the user's own hook survives", hj.get("my-own-hook", {}).get("PreToolUse", [{}])[0].get("hooks", [{}])[0].get("command") == "echo mine")
+
     # ---- hidden mode with the real sync: main stays clean, overlay pushed, no bytecode
     p8 = mkproject(BASE, "hidden")
     r = inst(p8, *A, "--visibility", "hidden", "--apply")

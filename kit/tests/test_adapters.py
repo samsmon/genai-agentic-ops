@@ -84,7 +84,7 @@ r = run(anti, ask_case["payload"], env={"AGENTIC_OPS_ASK_AS": "ask"})
 expect("antigravity: AGENTIC_OPS_ASK_AS=ask restores the ask answer", json.loads(r.stdout).get("decision") == "ask")
 
 # --- hooks.json files are valid and point at the installed guard path
-for tool, key_path in (("codex", ".codex/hooks/guard.py"), ("cursor", ".cursor/hooks/guard.py"), ("antigravity", ".agents/hooks/guard.py")):
+for tool, key_path in (("codex", ".codex/hooks/guard.py"), ("cursor", ".cursor/hooks/guard.py"), ("antigravity", "hooks/guard.py")):
     p = os.path.join(KIT, "adapters", tool, "hooks.json")
     try:
         text = open(p, encoding="utf-8").read()
@@ -101,27 +101,33 @@ for rel in ("claude/settings.json", "adapters/codex/hooks.json", "adapters/curso
 js = open(os.path.join(KIT, "adapters", "opencode", "agentic-ops-guard.js"), encoding="utf-8").read()
 expect("opencode plugin spawns python with -B", '["-B", "-I", core]' in js)
 
-# --- the Antigravity hook command works from the project root and from .agents/, and fails open when no guard is found
+# --- the Antigravity hook command: the IDE splits it on spaces and runs it with no shell, from the folder of hooks.json (.agents/)
 with tempfile.TemporaryDirectory() as proj:
     shutil.copytree(os.path.join(KIT, "core"), os.path.join(proj, "scripts", "agentic-ops", "core"), ignore=shutil.ignore_patterns("__pycache__"))
     os.makedirs(os.path.join(proj, ".agents", "hooks"))
     shutil.copy(os.path.join(KIT, "adapters", "antigravity", "guard.py"), os.path.join(proj, ".agents", "hooks", "guard.py"))
     shutil.copy(os.path.join(KIT, "adapters", "antigravity", "hooks.json"), os.path.join(proj, ".agents", "hooks.json"))
     hook = json.load(open(os.path.join(proj, ".agents", "hooks.json"), encoding="utf-8"))["agentic-ops-guard"]["PreToolUse"][0]["hooks"][0]["command"]
-    bad_payload = json.dumps({"toolCall": {"name": "run_command", "args": {"CommandLine": "git push --force origin main"}}})
+    expect("antigravity hooks.json command has no quotes or shell characters", not any(ch in hook for ch in "\"'|&;<>$`()"))
+    expect("antigravity hooks.json command uses python -B", hook.startswith("python -B "))
     env = {k: v for k, v in os.environ.items() if k != "AGENTIC_OPS_POLICY"}
-    for label, cwd in (("project root", proj), (".agents folder", os.path.join(proj, ".agents"))):
-        r = subprocess.run(hook, shell=True, cwd=cwd, input=bad_payload, capture_output=True, text=True, env=env)
+
+    def payload(c):
+        return json.dumps({"toolCall": {"name": "run_command", "args": {"CommandLine": c}}})
+
+    for label, c, want in (("force push", "git push --force origin main", "deny"), ("git status", "git status", "allow"), ("amend", "git commit --amend --allow-empty -m x", "allow")):
+        r = subprocess.run(hook.split(" "), cwd=os.path.join(proj, ".agents"), input=payload(c), capture_output=True, text=True, env=env)
         try:
             got = json.loads(r.stdout).get("decision")
         except ValueError:
             got = None
-        expect(f"antigravity hooks.json command works with cwd = {label}", r.returncode == 0 and got == "deny")
-        left = [d for d, _, fs in os.walk(proj) if "__pycache__" in d]
-        expect(f"antigravity hook run from {label} leaves no __pycache__", not left)
-    with tempfile.TemporaryDirectory() as elsewhere:
-        r = subprocess.run(hook, shell=True, cwd=elsewhere, input=bad_payload, capture_output=True, text=True, env=env)
-        expect("antigravity hook fails open and silent when neither guard path exists", r.returncode == 0 and r.stdout == "")
+        expect(f"antigravity hook (split on spaces, no shell, cwd = .agents): {label} is {want}", r.returncode == 0 and got == want)
+    left = [d for d, _, fs in os.walk(proj) if "__pycache__" in d]
+    expect("antigravity hook run leaves no __pycache__", not left)
+    # the quoted one-liner of v2.3.0 and v2.3.1 breaks under a runner that splits on spaces (kept as a regression check)
+    bad_cmd = 'python -B -I -c "import os,runpy;p=next((q for q in (\'hooks/guard.py\',) if os.path.isfile(q)),None);p and runpy.run_path(p)"'
+    r = subprocess.run(bad_cmd.split(" "), cwd=os.path.join(proj, ".agents"), input=payload("git status"), capture_output=True, text=True, env=env)
+    expect("regression: a command with nested quotes fails when split on spaces (why the shipped command has none)", r.returncode != 0)
 
 # --- installed layout: core in scripts/agentic-ops/core, adapter in the tool's own folder
 with tempfile.TemporaryDirectory() as proj:

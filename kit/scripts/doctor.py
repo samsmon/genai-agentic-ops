@@ -105,11 +105,15 @@ def check_adapters(project, tools):
                 cfg = os.path.join(d, "hooks.json")
                 try:
                     cmd = json.load(open(cfg, encoding="utf-8"))["agentic-ops-guard"]["PreToolUse"][0]["hooks"][0]["command"]
-                    ok = True
-                    for cwd in (project, d):
-                        r = subprocess.run(cmd, shell=True, cwd=cwd, input=json.dumps(mk(force)), capture_output=True, text=True)
-                        ok = ok and r.returncode == 0 and json.loads(r.stdout or "{}").get("decision") == "deny"
-                    add("PASS" if ok else "FAIL", "antigravity: hooks.json command works from the project root and from .agents/")
+                    plain = not any(ch in cmd for ch in "\"'|&;<>$`()")
+                    add("PASS" if plain else "FAIL", "antigravity: hooks.json command has no quotes or shell characters (the IDE splits it on spaces, no shell)", cmd[:80])
+                    r = subprocess.run(cmd.split(), cwd=d, input=json.dumps(mk(force)), capture_output=True, text=True)
+                    try:
+                        got = json.loads(r.stdout or "{}").get("decision")
+                    except ValueError:
+                        got = None
+                    add("PASS" if r.returncode == 0 and got == "deny" else "FAIL",
+                        "antigravity: the hooks.json command runs from .agents/ without a shell and denies a force push", f"exit {r.returncode}, decision {got}")
                 except Exception as e:  # noqa: BLE001
                     add("FAIL", "antigravity: hooks.json command is valid", str(e)[:100])
         except Exception as e:  # noqa: BLE001
