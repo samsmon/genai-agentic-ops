@@ -36,7 +36,7 @@ Parallel agents have no shared memory. In practice that means:
 
 ## Quick start: install or update
 
-Both prompts act on the project your agent session is running in (the folder it was opened in), not on this repository. Pin the URL to a commit SHA, not `main`, so the rules only change when you choose.
+Both prompts act on the project your agent session is running in (the folder it was opened in), not on this repository. Open the repository root itself as the workspace: Antigravity reads `.agents/hooks.json` from the opened folder, so a parent folder leaves the guard hook unloaded. Pin the URL to a commit SHA, not `main`, so the rules only change when you choose.
 
 **Install** (the project has no genai-agentic-ops yet):
 

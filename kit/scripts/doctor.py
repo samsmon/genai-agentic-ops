@@ -123,6 +123,9 @@ def check_adapters(project, tools):
         except (OSError, ValueError):
             add("FAIL", f"{t}: {TOOL_DIRS[t]}/{cfg_name} is valid JSON")
         add("UNKNOWN", f"{t}: the hook fires inside the real tool", "cannot be proven from here; see the matrix in kit/README.md (tested live only for Antigravity deny, one model, one machine)")
+        if t == "antigravity":
+            add("UNKNOWN", "antigravity: the IDE loads .agents/hooks.json from the opened workspace root",
+                "open the repository root itself as the workspace; a parent folder does not load this hook")
 
 
 def main():

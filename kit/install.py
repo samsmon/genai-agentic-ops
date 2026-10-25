@@ -32,6 +32,7 @@ RAW_BASE = os.environ.get("AGENTIC_OPS_RAW_BASE", "https://raw.githubusercontent
 TOOLS = ("claude", "codex", "cursor", "opencode", "antigravity")
 MODULES = ("guard", "githooks", "scripts", "handoff", "tests")
 SHELLS = ("ps", "sh")
+SYNC_EXT = {"ps": "ps1", "sh": "sh"}  # --shell value -> extension of the agentic-sync script
 # the agentic-sync default list; a tracked file matching one of these stops hidden mode (exit 3)
 TRACKED_CHECK = ["AGENTS.md", "CLAUDE.md", "GEMINI.md", ".cursorrules", "docs/CURRENT_OPS.md", "docs/CURRENT_OPS-archive.md",
                  "docs/HARNESS_DECLINED.md", ".claude/", ".cursor/", ".codex/", ".agents/", ".agent/", ".opencode/",
@@ -415,7 +416,7 @@ def apply_plan(project, plan, force):
 
 
 def run_sync(a, project):
-    script = os.path.join(project, "scripts", "agentic-ops", "agentic-sync." + a.shell)
+    script = os.path.join(project, "scripts", "agentic-ops", "agentic-sync." + SYNC_EXT[a.shell])
     if not os.path.isfile(script):
         raise Fail(2, "agentic-sync was not installed; hidden mode needs the scripts module")
     rc, remotes = git(project, "remote")
@@ -463,6 +464,9 @@ def main(argv=None):
         print(f"genai-agentic-ops install ({'APPLY' if a.apply else 'dry run'}) into {project}")
         print(f"  tools={a.tools or '-'} modules={a.modules} shell={a.shell} visibility={a.visibility} policy={a.policy} source={src.label}")
         print_plan(plan, a.apply)
+        if "antigravity" in (a.tools or "").split(","):
+            print("  note: Antigravity reads .agents/hooks.json from the folder opened as the workspace. "
+                  "Open the repository root itself, not a parent folder, or the guard hook does not load.")
         blocked = [p for p in plan if p["action"] == "stop" or (p["action"] == "conflict" and not a.force)]
         if blocked:
             stops = [p for p in plan if p["action"] == "stop"]

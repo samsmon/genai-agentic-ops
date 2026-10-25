@@ -273,6 +273,23 @@ try:
         r = subprocess.run([sh, os.path.join(KIT, "scripts", "doctor.sh"), "--project", p]
                            , capture_output=True, text=True, env=ENV, encoding="utf-8", errors="replace")
         expect("doctor.sh runs", "[DOCTOR]" in r.stdout)
+    # ---- hidden mode through each shell entry must run agentic-sync init (the sync step is not skipped)
+    for shell_name in ("ps", "sh"):
+        if shell_name == "ps" and not (ps and os.name == "nt"):
+            print("SKIP hidden mode with --shell ps (PowerShell on Windows not found)")
+            continue
+        if shell_name == "sh" and not sh:
+            print("SKIP hidden mode with --shell sh (sh not found)")
+            continue
+        ph = mkproject(BASE, "hidden-" + shell_name)
+        r = inst(ph, "--tools", "antigravity", "--modules", "guard,githooks,scripts", "--shell", shell_name, "--visibility", "hidden", "--apply")
+        expect(f"hidden --shell {shell_name}: exit 0, agentic-sync init ran", r.returncode == 0)
+        expect(f"hidden --shell {shell_name}: no 'was not installed' error", "was not installed" not in r.stdout + r.stderr)
+        expect(f"hidden --shell {shell_name}: overlay git dir exists", os.path.isdir(os.path.join(ph, ".git", "agentic")))
+        expect(f"hidden --shell {shell_name}: project git status stays clean", git(ph, "status", "--porcelain").stdout.strip() == "")
+        expect(f"hidden --shell {shell_name}: prints the Antigravity workspace-root reminder", "Open the repository root itself" in r.stdout)
+        r2 = inst(ph, "--tools", "antigravity", "--modules", "guard,githooks,scripts", "--shell", shell_name, "--visibility", "hidden", "--apply")
+        expect(f"hidden --shell {shell_name}: running again changes nothing", r2.returncode == 0 and "Nothing to do" in r2.stdout)
 finally:
     shutil.rmtree(BASE, ignore_errors=True)
 
