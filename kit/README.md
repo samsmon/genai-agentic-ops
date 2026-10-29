@@ -10,6 +10,8 @@ Honest limits: the guard is one neutral core (`core/policy.py`) with one thin ad
 |---|---|---|---|
 | guard core | `core/policy.py` | The decisions: blocks agent attribution lines and git identity changes, the hook-bypass flag, sleep-loop polling; asks before destructive commands; blocks full reads of big text files. Pure Python, no I/O | Used by every adapter |
 | guard adapters | `claude/` (guard.py, settings.json), `adapters/codex/`, `adapters/cursor/`, `adapters/opencode/`, `adapters/antigravity/` | Read the tool's own payload, call the core, answer in the tool's own format. Install only the tools you use | Per tool, see matrix |
+| session tools | `scripts/status-brief.*`, `scripts/commit-mine.*`, `scripts/review-queue.*`, `scripts/triage-untracked.*` | `status-brief`: mid-session status or resume brief from data. `commit-mine`: commits and pushes only the paths you name, with the git-policy checks. `review-queue`: sorts the review queue of the state file. `triage-untracked`: groups untracked files and proposes what to do. All read-only except `commit-mine`; see "Session tools" below | Any agent, any shell |
+| session hooks | `claude/hooks/status_prompt.py`, `claude/hooks/compact_state.py` | `status_prompt` runs `status-brief` when the whole message is "status", "progress" or "resume". `compact_state` saves the last user messages and the resume brief before a compaction and prints them after it. Both need the session tools and stay silent on any failure | Claude Code only |
 | session start | `claude/hooks/session_start.py` | Prints the sync and lock summary at session start, sets `core.hooksPath` | Claude Code only |
 | githooks | `githooks/commit-msg`, `githooks/pre-commit` | `commit-msg` rejects agent trailers, agent/bot identities and messages that break Conventional Commits; `pre-commit` rejects large files and likely secrets | Any agent that commits |
 | scripts | `scripts/start-brief.*`, `scripts/wrap-check.*`, `scripts/precommit-check.*` | Session start summary, end-of-session check, the pre-commit scan. Both session scripts also report the hidden-mode overlay when there is one | Any agent, any shell |
@@ -126,12 +128,34 @@ Limits you should know about:
 
 Cross-tool layers that need no hook support: the git hooks (`githooks/`), the scripts (any agent that can run a shell), and the written rules. They are the whole story for any tool or version whose hook adapter is missing or wrong.
 
+## Session tools
+
+```
+# PowerShell
+status-brief.ps1 -Mode status|resume
+commit-mine.ps1 -Message "fix(x): y" -Paths a.txt,sub/ [-Push] [-DryRun]
+review-queue.ps1 [-Top 10]
+triage-untracked.ps1 [-BigKB 1024] [-Top 12]
+
+# sh
+status-brief.sh [status|resume] [root]
+commit-mine.sh -m "fix(x): y" [--push] [--dry-run] a.txt sub/
+review-queue.sh [--top 10] [root]
+triage-untracked.sh [--big-kb 1024] [--top 12] [root]
+```
+
+- `commit-mine` exits 0 ok, 1 misuse or failure, 2 `STOP:` (a decision is needed: another session's staged files, a moved remote, an identity or trailer mismatch). It never rebases, merges or force-pushes. The other three exit 0.
+- Settings (environment or parameter): `STATE_FILE` (default `NOW.md`), `OPS_FILE` (default `docs/CURRENT_OPS.md`), `REVIEW_HEADING` (default `Awaiting review`; `Belum di-review` is accepted as well), `STATUS_WIP_GLOBS` (comma list, default `projects/*/discussion/*.md,research/*.md,docs/discussion/*.md,docs/research/*.md`). The state file may use the headings `## Last focus` and `## Next step` and a line starting `**Last update`; the Indonesian forms `## Fokus terakhir` and `**Update terakhir` are accepted too.
+- Hidden mode: the scripts read working-tree files, so the ops log and state file do not need to be tracked by the project. `commit-mine` refuses a path that the project excludes and points to `agentic-sync commit`. The compaction snapshots are written inside the git directory (`<git-dir>/agentic-ops/`), not into the work tree, so the overlay never picks them up.
+- The hooks look for `scripts/agentic-ops/status-brief.*` (PowerShell first on Windows, sh elsewhere); without the `scripts` module they do nothing.
+
 ## Configuration
 
 - `core/policy.py`: constants at the top (`RULES_DOC`, `BIG_BYTES`, `BLOCK_*`, `ASK_DESTRUCTIVE`). Adapters hold only tool-specific switches (`CODEX_ASK_AS` in the Codex adapter, `ASK_AS` in the OpenCode plugin: set to `allow` to let risky commands through instead of blocking them). `BLOCK_AGENT_TRAILERS` and `BLOCK_IDENTITY_CHANGE` encode a "no agent attribution in git history" policy; set them to `False` if your project wants attribution.
 - `commit-msg` enforces the same attribution policy and the commit format. Exceptions on the user's say-so only: `ALLOW_AGENT_TRAILER=1` skips the attribution check, `SKIP_COMMIT_FORMAT=1` skips the format check. Extra commit types: `git config agentic.commitTypes "ops deps"` or `COMMIT_EXTRA_TYPES`. Remove the hook if you want attribution. The guard hook denies agent commands that set either variable.
 - `precommit-check`: `ALLOW_BIG_FILES=1`, `ALLOW_SECRET_PATTERN=1` (user's call only), `SECRET_SCAN_SKIP='dir/*,other/*'`, rules-file size warning (`-RulesFile`, `-MaxRulesBytes`).
 - `start-brief` / `wrap-check` read `docs/CURRENT_OPS.md` by default (`-OpsFile` / `OPS_FILE`). `start-brief` also prints a state file (`NOW.md`) if one exists.
+- The session tools take `STATE_FILE`, `OPS_FILE`, `REVIEW_HEADING` and `STATUS_WIP_GLOBS` (see "Session tools").
 - Handoff module defaults (`NOW.md`, `log/YYYY-MM.md`, `## Awaiting review`, `discussion/` folders) are parameters of `handoff-check.*`.
 
 ## Git policy and wrap-check
