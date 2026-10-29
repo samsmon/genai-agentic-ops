@@ -132,6 +132,63 @@ def check_adapters(project, tools):
                 "open the repository root itself as the workspace; a parent folder does not load this hook")
 
 
+SESSION_TOOLS = ("status-brief", "commit-mine", "review-queue", "triage-untracked")
+
+
+def find_sh():
+    p = shutil.which("sh")
+    if p:
+        return p
+    for base in (os.environ.get("ProgramFiles"), os.environ.get("ProgramFiles(x86)")):
+        for rel in ("Git/bin/sh.exe", "Git/usr/bin/sh.exe"):
+            c = os.path.join(base or "", *rel.split("/"))
+            if base and os.path.isfile(c):
+                return c
+    return None
+
+
+def check_session_tools(project, tools, modules, shell):
+    """v2.4 session tools: the four scripts, and for Claude Code the two hooks and their settings entries."""
+    if "scripts" in modules and shell in ("ps", "sh"):
+        ext = "ps1" if shell == "ps" else "sh"
+        folder = os.path.join(project, "scripts", "agentic-ops")
+        gone = [n for n in SESSION_TOOLS if not os.path.isfile(os.path.join(folder, f"{n}.{ext}"))]
+        add("PASS" if not gone else "FAIL", "session tools present (status-brief, commit-mine, review-queue, triage-untracked)", ", ".join(gone))
+        brief = os.path.join(folder, f"status-brief.{ext}")
+        if os.path.isfile(brief):
+            cmd = None
+            if shell == "ps" and shutil.which("powershell"):
+                cmd = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", brief, "-Mode", "status", "-Root", project]
+            elif shell == "sh" and find_sh():
+                cmd = [find_sh(), brief, "status", project]
+            if cmd:
+                r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+                add("PASS" if r.returncode == 0 and "[MODE] status" in r.stdout else "FAIL", "status-brief runs (read-only)", f"exit {r.returncode}")
+            else:
+                add("UNKNOWN", "status-brief runs (read-only)", f"no {'powershell' if shell == 'ps' else 'sh'} found to run it")
+    if "claude" not in tools:
+        return
+    d = os.path.join(project, ".claude")
+    gone = [n for n in ("compact_state.py", "status_prompt.py") if not os.path.isfile(os.path.join(d, "hooks", n))]
+    add("PASS" if not gone else "FAIL", "claude: session hooks present (compact_state.py, status_prompt.py)", ", ".join(gone))
+    label = "claude: settings.json registers PreCompact, UserPromptSubmit and SessionStart (compact)"
+    try:
+        hooks = json.load(open(os.path.join(d, "settings.json"), encoding="utf-8")).get("hooks", {})
+        cmds = lambda ev, match=None: " ".join(h.get("command", "") for e in hooks.get(ev, []) if match is None or e.get("matcher") == match for h in e.get("hooks", []))
+        ok = ("compact_state.py\" snapshot" in cmds("PreCompact") and "status_prompt.py" in cmds("UserPromptSubmit")
+              and "compact_state.py\" restore" in cmds("SessionStart", "compact"))
+        add("PASS" if ok else "FAIL", label)
+    except (OSError, ValueError, AttributeError):
+        add("FAIL", label)
+    if not gone:
+        env = dict(os.environ, CLAUDE_PROJECT_DIR=project)
+        for name, args, payload in (("compact_state.py", ["restore"], "{}"), ("status_prompt.py", [], json.dumps({"prompt": "hello there"}))):
+            r = subprocess.run([sys.executable, "-B", "-I", os.path.join(d, "hooks", name)] + args, input=payload, capture_output=True,
+                               text=True, env=env, timeout=30)
+            add("PASS" if r.returncode == 0 and not r.stdout.strip() else "FAIL", f"claude: {name} exits 0 and stays silent for an ordinary event", f"exit {r.returncode}")
+
+
+
 def main():
     ap = argparse.ArgumentParser(description="agentic-ops doctor (read-only)")
     ap.add_argument("--project", default="")
@@ -239,6 +296,8 @@ def main():
         texty = [t for t in ALL_TOOLS if t not in tools]
         if texty:
             add("UNKNOWN", "tools without an installed hook follow the rules as text only", ", ".join(texty) + " (git hooks still cover anything that commits)")
+
+    check_session_tools(project, tools, modules, (receipt or {}).get("shell", ""))
 
     # hidden mode overlay
     ov = os.path.join(project, ".git", "agentic")

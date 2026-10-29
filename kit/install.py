@@ -39,6 +39,8 @@ TRACKED_CHECK = ["AGENTS.md", "CLAUDE.md", "GEMINI.md", ".cursorrules", "docs/CU
                  ".githooks/", "scripts/agentic-ops/"]
 POINTER_LINE = "Read AGENTS.md for the project rules."
 RECEIPT = "scripts/agentic-ops/INSTALLED.json"
+# command fragments that mark a hook entry as ours, so a re-install replaces it in place instead of adding a second one
+OURS = ("guard.py", "session_start.py", "compact_state.py", "status_prompt.py", "agentic-ops-guard")
 
 
 class Fail(Exception):
@@ -183,7 +185,7 @@ def _cmds(item):
 
 
 def _ours(item):
-    return any(("guard.py" in c or "session_start.py" in c or "agentic-ops-guard" in c) for c in _cmds(item))
+    return any(any(n in c for n in OURS) for c in _cmds(item))
 
 
 def merge_json(dst, src):

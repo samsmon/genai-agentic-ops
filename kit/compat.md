@@ -2,6 +2,10 @@
 
 What the adapters in `adapters/` and `claude/` are based on. All pages were read on **2026-10-22**. Tool docs move fast; if an adapter misbehaves, check the page again first. The status columns live in the matrix in [`README.md`](README.md).
 
+## Session hooks (v2.4)
+
+`claude/hooks/status_prompt.py` (UserPromptSubmit) and `claude/hooks/compact_state.py` (PreCompact, and SessionStart with matcher `compact`) use the Claude Code hook events as they were documented when the v2.4 tools were built in another repository, where they ran for real in Claude Code on Windows. Not re-read against the docs on 2026-10-29 and not run in any other tool. UserPromptSubmit and SessionStart print their stdout (plain text for SessionStart, `hookSpecificOutput.additionalContext` for UserPromptSubmit) into the context; PreCompact is used for its side effect only. The other adapters have no equivalent in this kit.
+
 ## Sources
 
 | Tool | Page | What was taken from it |

@@ -210,6 +210,47 @@ try:
     expect("merge-ag: the quoted v2.3 entry becomes the plain command, in place", cmd_new == "python -B -I hooks/guard.py" and len(hj["agentic-ops-guard"]["PreToolUse"]) == 1)
     expect("merge-ag: the user's own hook survives", hj.get("my-own-hook", {}).get("PreToolUse", [{}])[0].get("hooks", [{}])[0].get("command") == "echo mine")
 
+    # ---- v2.4 session tools: scripts per shell, Claude hooks, settings merge over a cloud-style entry, doctor
+    names = ("status-brief", "commit-mine", "review-queue", "triage-untracked")
+    p13 = mkproject(BASE, "session-tools")
+    os.makedirs(os.path.join(p13, ".claude"))
+    mine = {"hooks": {"UserPromptSubmit": [{"hooks": [{"type": "command", "command": "python -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/status_prompt.py\""}]},
+                                          {"hooks": [{"type": "command", "command": "echo mine"}]}]}}
+    with open(os.path.join(p13, ".claude", "settings.json"), "w") as f:
+        json.dump(mine, f)
+    r = inst(p13, "--tools", "claude", "--modules", "guard,scripts,tests", "--shell", "sh", "--visibility", "visible", "--apply")
+    expect("session tools: install exits 0", r.returncode == 0)
+    for n in names:
+        expect(f"session tools: {n}.sh installed, no .ps1", os.path.isfile(os.path.join(p13, "scripts", "agentic-ops", n + ".sh")) and not os.path.exists(os.path.join(p13, "scripts", "agentic-ops", n + ".ps1")))
+    expect("session tools: sh suite installed with the tests module", os.path.isfile(os.path.join(p13, "scripts", "agentic-ops", "tests", "session-tools.tests.sh")))
+    expect("session tools: both Claude hooks copied", all(os.path.isfile(os.path.join(p13, ".claude", "hooks", h)) for h in ("compact_state.py", "status_prompt.py")))
+    s = json.load(open(os.path.join(p13, ".claude", "settings.json"), encoding="utf-8"))
+    ups = s["hooks"]["UserPromptSubmit"]
+    expect("settings merge: UserPromptSubmit has one status_prompt entry (old one replaced, -B added) and the user's own", sum("status_prompt.py" in json.dumps(h) for h in ups) == 1 and " -B " in json.dumps(ups) and "echo mine" in json.dumps(ups))
+    expect("settings merge: PreCompact snapshot registered", "compact_state.py\" snapshot" in s["hooks"]["PreCompact"][0]["hooks"][0]["command"])
+    ss = s["hooks"]["SessionStart"]
+    expect("settings merge: SessionStart keeps startup|resume and adds the compact matcher",
+           sorted(h.get("matcher") for h in ss) == ["compact", "startup|resume"] and "compact_state.py\" restore" in [h for h in ss if h.get("matcher") == "compact"][0]["hooks"][0]["command"])
+    r = inst(p13, "--tools", "claude", "--modules", "guard,scripts,tests", "--shell", "sh", "--visibility", "visible", "--apply")
+    expect("session tools: second run changes nothing", "Nothing to do" in r.stdout)
+    r = doctor(p13)
+    expect("doctor: session tools and Claude hooks checks pass", r.returncode == 0 and "PASS    session tools present" in r.stdout and "PASS    claude: session hooks present" in r.stdout
+           and "PASS    claude: settings.json registers PreCompact" in r.stdout and "PASS    status-brief runs" in r.stdout)
+    os.remove(os.path.join(p13, "scripts", "agentic-ops", "review-queue.sh"))
+    os.remove(os.path.join(p13, ".claude", "hooks", "compact_state.py"))
+    r = doctor(p13)
+    expect("doctor: a missing session script and a missing hook are FAIL", r.returncode == 1 and "FAIL    session tools present" in r.stdout and "FAIL    claude: session hooks present" in r.stdout)
+    p14 = mkproject(BASE, "session-tools-ps")
+    inst(p14, "--tools", "", "--modules", "scripts", "--shell", "ps", "--visibility", "visible", "--apply")
+    expect("session tools: --shell ps installs the .ps1 set", all(os.path.isfile(os.path.join(p14, "scripts", "agentic-ops", n + ".ps1")) for n in names)
+           and not os.path.exists(os.path.join(p14, "scripts", "agentic-ops", "status-brief.sh")))
+    # hidden mode: the session tools are agentic files, untracked in the project, and the hook state lives in the git dir
+    p15 = mkproject(BASE, "session-tools-hidden")
+    r = inst(p15, "--tools", "claude", "--modules", "guard,githooks,scripts", "--shell", "sh", "--visibility", "hidden", "--apply")
+    expect("session tools hidden: install exits 0, project status clean", r.returncode == 0 and git(p15, "status", "--porcelain").stdout.strip() == "")
+    r = doctor(p15)
+    expect("session tools hidden: doctor has no FAIL", r.returncode == 0 and "0 fail" in r.stdout)
+
     # ---- hidden mode with the real sync: main stays clean, overlay pushed, no bytecode
     p8 = mkproject(BASE, "hidden")
     r = inst(p8, *A, "--visibility", "hidden", "--apply")

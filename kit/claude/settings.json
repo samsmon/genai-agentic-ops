@@ -9,6 +9,35 @@
             "command": "python -B -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_start.py\""
           }
         ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -B -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/compact_state.py\" restore"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -B -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/compact_state.py\" snapshot"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -B -I \"$CLAUDE_PROJECT_DIR/.claude/hooks/status_prompt.py\""
+          }
+        ]
       }
     ],
     "PreToolUse": [
