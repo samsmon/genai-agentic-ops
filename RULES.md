@@ -62,7 +62,7 @@ Project-specific rules (commit identity, paths, domain conventions) stay in that
 ### 0. Session start
 - Read this rules file and `docs/CURRENT_OPS.md` before acting. If `scripts/agentic-ops/start-brief.*` exists, run it instead of doing the checks below by hand; a `STOP:` line or exit code 2 means stop and report to the user.
 - **Check git sync; do not blind `git pull`:**
-  `git fetch --quiet && git status -sb` (or compare `git rev-parse HEAD` with `git ls-remote origin HEAD`).
+  `git fetch --quiet && git status -sb`.
   - Same -> continue.
   - Behind + clean working tree -> `git pull --ff-only`.
   - Ahead / diverged / uncommitted local changes -> **STOP and report to the user.** Never auto-merge.
@@ -75,11 +75,11 @@ Project-specific rules (commit identity, paths, domain conventions) stay in that
 - Do only what was asked. No unrequested refactors or "cleanups".
 
 ### 2. Long tasks must be delegated (non-blocking)
-- "Long" = estimated > ~2 min, extensive multi-step work, deep research, multi-file audits, batch refactors, or heavy tests.
+- "Long" = estimated > ~2 min, multi-step work, deep research, multi-file audits, batch refactors, heavy tests.
 - Long tasks MUST NOT run blocking in the main conversation thread. Delegate to a subagent or background runner. If the tool has no subagents, run as a background process (`nohup ... > log 2>&1 &`).
 - Order: plan -> user approval (if it changes anything) -> log in CURRENT_OPS -> delegate.
-- The main agent replies immediately with a short note of what was delegated, then is ready for the next command.
-- **No polling**: no `sleep` loops, no repeated log checks. Once a task is in the background, stop calling tools and wait for the completion notification or the user.
+- The main agent replies at once with a short note of what was delegated, then takes the next command.
+- **No polling**: no `sleep` loops, no repeated log checks. Once a task is in the background, stop calling tools and wait for its completion notice or the user.
 
 ### 3. Live log in `docs/CURRENT_OPS.md`
 - Before starting any task that touches files/areas/services: add **one new row** to CURRENT_OPS with status `running`. Each agent edits only its own rows.
@@ -88,7 +88,7 @@ Project-specific rules (commit identity, paths, domain conventions) stay in that
 - **Stale lock**: `running` for over 2 hours with no update is stale. Do not silently take over; ask the user.
 - Locks only work if other agents and devices can see them: publish the CURRENT_OPS row on claim and on release, as the git policy (section 9) allows.
 - **Rotation**: keep at most 5 `done/failed/cancelled` rows in the main table. Move older ones verbatim to `docs/CURRENT_OPS-archive.md` (newest on top). Do not read the archive at session start.
-- Never put secrets, tokens, or credentials in CURRENT_OPS or any log. Paths and short descriptions only.
+- Never put secrets, tokens, or credentials in CURRENT_OPS or any log.
 
 ### 4. Safety: always ask first
 Without explicit confirmation, NEVER:
@@ -100,8 +100,9 @@ Without explicit confirmation, NEVER:
 
 ### 5. Verify & close out
 - Never claim "done/working" before verifying (run tests/live checks). If something failed or was skipped, say so plainly.
-- Before handing off: `git diff --stat` to make sure nothing was accidentally deleted/truncated.
-- Commit messages, written or suggested: English Conventional Commits, `type(scope): subject` (imperative, lowercase, no final period, 50 characters or fewer, 72 max), blank line, body wrapped at 72 saying what and why. Nothing before the type. Details: `kit/commit-format.md`. Who commits: section 9.
+- Before handing off: `git diff --stat` to catch accidental deletions.
+- Commit messages, written or suggested: Conventional Commits, `type(scope): subject` (imperative, lowercase, no final period, 50 characters or fewer, 72 max), blank line, body wrapped at 72 saying what and why. Nothing before the type. Details: `kit/commit-format.md`. Who commits: section 9.
+- Language: everything written into the project is English: code comments, logs, ops-log rows, docs, discussion files, PR text, commit messages. Chat follows the user's language. A project or user rule naming another language for a file wins (section 7).
 - End with a short report: what changed, verification result, remaining work.
 - Before risky config changes or destructive steps, make a backup (e.g. `cp file file.bak`) or state the undo command in the plan.
 
@@ -122,8 +123,8 @@ Without explicit confirmation, NEVER:
 
 ### 10. Token discipline
 - Never paste whole files into replies. List changed files with a one-line summary each.
-- Read large files (over ~24 KB: docs, logs, JSON) with offset/limit or search first; never read changelogs, logs or archives in full.
-- Keep command output small (`tail`, `head`, `--stat`). Do not re-run a command just to see the same output again.
+- Read large files (over ~24 KB: docs, logs, JSON) with offset/limit or search first; never read logs or archives in full.
+- Keep command output small (`tail`, `head`, `--stat`); do not re-run a command for the same output.
 - Keep this rules file short: move rarely used detail into a doc and link to it.
 
 ### 11. Enforcement (be honest about it)
@@ -132,13 +133,13 @@ Without explicit confirmation, NEVER:
 - Never claim a rule is enforced without checking that its hook is installed and active (`git config core.hooksPath`, `.claude/settings.json`).
 
 ### 12. Harness builder (recommend, never build unasked)
-- **Trigger**, any one of: (a) this kind of task already appears in the ops log or earlier in the session, so this is at least the second time; (b) the user says "every time", "usually", "always"; (c) you just did a deterministic multi-step procedure by hand; (d) the same mistake happened again and a machine could prevent it.
+- **Trigger**, any one of: (a) this kind of task is already in the ops log or earlier in the session, so it is at least the second time; (b) the user says "every time", "usually", "always"; (c) you just did a deterministic multi-step procedure by hand; (d) the same mistake happened again and a machine could prevent it.
 - When triggered, finish the task first, then add **one** recommendation block to your closing report (at most one per task):
   `Harness suggestion: <what repeats> | Type: <script|template|doc|skill|hook> | Saves: <est. per use> | Effort: <est.> | Where: <proposed path>`
 - Pick the lightest type that works: script (deterministic), template (repeated file structure), doc (knowledge, not action), skill/slash command (needs judgment, fixed flow), hook (must never be forgotten). Details: `kit/harness-builder.md`.
-- Do NOT suggest for one-off work, fast-changing procedures, or when build cost exceeds the savings over roughly the next five uses.
-- A suggestion is not an approval. Building it is a change (section 1) and, if big, a long task (section 2). Verify it before calling it done (section 5).
-- If the user declines, append one line to `docs/HARNESS_DECLINED.md` (date, what, why). Before suggesting, grep that file and never repeat a declined suggestion unless the user asks.
+- Do NOT suggest for one-off work, fast-changing procedures, or when the build costs more than the next five uses would save.
+- A suggestion is not an approval. Building it is a change (section 1) and, if big, a long task (section 2).
+- If the user declines, append one line to `docs/HARNESS_DECLINED.md` (date, what, why). Grep that file before suggesting; never repeat a declined suggestion unless the user asks.
 <!-- END genai-agentic-ops v2 -->
 ```
 

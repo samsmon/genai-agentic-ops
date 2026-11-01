@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Rules block (section 5): new language rule. Everything the agent writes into the project is English (code comments, logs, ops-log rows, docs, discussion files, PR text, commit messages); chat follows the user's language; a project or user rule naming another language for a file wins (section 7). The block was 1 character under its 8,000 limit, so wording elsewhere in the block was tightened without changing meaning: the `git rev-parse` alternative in section 0, and shorter phrasing in sections 2, 3, 5, 10 and 12. The marker stays `v2`; a project gets the new text only when it runs Bootstrap again.
 - Docs: `kit/headless-delegation.md`, notes from a live Windows run of one agent delegating read-only analysis to another agent CLI in the background (print mode, plan mode, answer to a file). Records what failed (stdin prompts, file-path prompts, headless write mode, quote escaping in PowerShell 5.1, large attachments) and the Windows pitfalls met on the way (MSIX write redirection, stale PATH, locked binaries, winget lag). Reference only: not in `kit/MANIFEST`, not installed, no version bump.
 
 ## v2.3.2 - 2026-10-25 (commit `32c29b658bf45e00ccf2a3c2915a2bdb48cc4499`)
