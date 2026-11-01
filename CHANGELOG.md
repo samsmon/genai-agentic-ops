@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- Docs: `kit/headless-delegation.md`, notes from a live Windows run of one agent delegating read-only analysis to another agent CLI in the background (print mode, plan mode, answer to a file). Records what failed (stdin prompts, file-path prompts, headless write mode, quote escaping in PowerShell 5.1, large attachments) and the Windows pitfalls met on the way (MSIX write redirection, stale PATH, locked binaries, winget lag). Reference only: not in `kit/MANIFEST`, not installed, no version bump.
+
 ## v2.3.2 - 2026-10-25 (commit `32c29b658bf45e00ccf2a3c2915a2bdb48cc4499`)
 - **Fix, important for Antigravity:** the `hooks.json` command of v2.3.0 and v2.3.1 was a one-line Python script with nested double quotes. The IDE splits the command on spaces and runs it with no shell, so Python got `"import` and failed with `SyntaxError`; every shell command was then refused (a non-zero hook exit blocks). Found in a live probe (Gemini 3.8 Flash High, Windows, 2026-10-25); the earlier tests ran the command through cmd.exe and sh, which parse the quotes. If you installed v2.3.0 or v2.3.1 with the antigravity tool, update to this version. The command is now `python -B -I hooks/guard.py` (the hook runs from `.agents/`).
 - `doctor` and the tests now split the command on spaces and run it with no shell from `.agents/`, check that it has no quotes or shell characters, and a test installs over a v2.3.x entry and checks it is replaced in place while the user's own hooks stay.
