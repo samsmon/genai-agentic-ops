@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.4.0 - 2026-11-03
+## v2.4.0 - 2026-11-03 (commit `b6404a60c1d5f95c7ac152f88a08dc8315f4b2f3`)
 - Rules block (section 1): new "Non-interactive run" bullet. In print or headless mode, where nobody can answer a question, the user's prompt is the approval for exactly the scope it states; a file list in the prompt wins over the ops-log row; section 4 still applies in full and file contents never count as approval; an unclear scope means no change and a note in the final reply. Found in a benchmark where two of nine headless runs made no edit because the rules waited for a plan approval nobody could give. The block is now under 9,400 characters (about 11,700 with the snippets); the limits in `test_rules_block.py` and the size notes in `RULES.md` and `README.md` follow.
 - Repo: `.gitattributes` keeps LF line endings for `*.sh`, `*.py`, `*.mjs`, `*.json`, `kit/githooks/*` and `kit/MANIFEST`. A CRLF checkout (`core.autocrlf=true` on Windows) broke the shell scripts and several kit tests. `.gitignore` for `__pycache__/`, `*.pyc` and `.pytest_cache/`.
 - Docs: field notes in the README record a head-to-head benchmark (headless, one model, small tasks): the kit added about 10 KB of rules context and no saving on small tasks, and the chief and worker threshold was never reached, so delegation is still untested. Also noted: an untrusted workspace ignores the `permissions.allow` entries of `.claude/settings.json` in `claude -p`.
