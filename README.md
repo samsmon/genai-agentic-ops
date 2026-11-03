@@ -88,7 +88,7 @@ Both prompts act on the project your agent session is running in, not on this re
 **Install** (the project has no genai-agentic-ops yet):
 
 ```
-Read https://raw.githubusercontent.com/samsmon/genai-agentic-ops/32c29b658bf45e00ccf2a3c2915a2bdb48cc4499/RULES.md and run Part A (Bootstrap) for this project.
+Read https://raw.githubusercontent.com/samsmon/genai-agentic-ops/b6404a60c1d5f95c7ac152f88a08dc8315f4b2f3/RULES.md and run Part A (Bootstrap) for this project.
 Analyze first and show me the plan; write nothing until I approve.
 ```
 
@@ -368,7 +368,7 @@ Always pin to a commit SHA. The rules block is the same across v2.x unless the c
 
 | Version | Commit SHA | Notes |
 |---|---|---|
-| v2.4.0 | tag `v2.4.0` | Current. Chief and worker rule, `worker-check`, English-only rule, non-interactive clause, LF line endings |
+| v2.4.0 | `b6404a60c1d5f95c7ac152f88a08dc8315f4b2f3` | Current. Chief and worker rule, `worker-check`, English-only rule, non-interactive clause, LF line endings |
 | v2.3.2 | `32c29b658bf45e00ccf2a3c2915a2bdb48cc4499` | Previous. Use this or later with Antigravity |
 | v2.3.1 | `8fcf69b0e9e97c698a489d133f523c6d99c83a0f` | Ships an Antigravity hook the IDE cannot run |
 | v2.3.0 | `bca34a37edd8725fa2875c0f831d583c5500f7c1` | Cannot finish a hidden-mode install on Windows; same Antigravity hook problem |
