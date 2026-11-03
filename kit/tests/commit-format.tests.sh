@@ -65,6 +65,11 @@ sh "$CHK" "$BASE/m" >/dev/null 2>&1; [ $? = 1 ]; expect 'custom type rejected by
 COMMIT_EXTRA_TYPES='ops deps' sh "$CHK" "$BASE/m" >/dev/null 2>&1; expect 'COMMIT_EXTRA_TYPES adds a type' $?
 mkdir -p "$BASE/r" && git -C "$BASE/r" init -q && git -C "$BASE/r" config agentic.commitTypes 'ops'
 (cd "$BASE/r" && sh "$CHK" "$BASE/m" >/dev/null 2>&1); expect 'git config agentic.commitTypes adds a type' $?
+printf 'ops: rotate rows\n' > "$BASE/m"
+mkdir -p "$BASE/s" && cp "$CHK" "$BASE/s/"
+sh "$BASE/s/commit-msg-check.sh" "$BASE/m" >/dev/null 2>&1; [ $? = 1 ]; expect 'no commit-types file: custom type rejected' $?
+printf '# project types\nops deps  # trailing comment\n' > "$BASE/s/commit-types"
+sh "$BASE/s/commit-msg-check.sh" "$BASE/m" >/dev/null 2>&1; expect 'commit-types file adds a type' $?
 printf 'Update stuff\n' > "$BASE/m"
 SKIP_COMMIT_FORMAT=1 sh "$CHK" "$BASE/m" >/dev/null 2>&1; expect 'SKIP_COMMIT_FORMAT=1 skips the check' $?
 sh "$CHK" >/dev/null 2>&1; [ $? = 2 ]; expect 'usage error without a file -> exit 2' $?

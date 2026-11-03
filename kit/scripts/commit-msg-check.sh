@@ -3,7 +3,8 @@
 # Usage: commit-msg-check.sh <message-file>
 #   exit 0 = accepted (warnings may print), exit 1 = rejected, exit 2 = usage error.
 # Called by githooks/commit-msg; PowerShell can call it too:  sh scripts/agentic-ops/commit-msg-check.sh <file>
-# Extra types:   git config agentic.commitTypes "ops wip"      or   COMMIT_EXTRA_TYPES="ops wip"
+# Extra types:   a tracked file "commit-types" next to this script (words; "#" starts a comment), or
+#                git config agentic.commitTypes "ops wip" (local only), or COMMIT_EXTRA_TYPES="ops wip"
 # Skip the check (the user's call only):   SKIP_COMMIT_FORMAT=1
 # Rules and reasons: kit/commit-format.md
 set -f
@@ -15,7 +16,8 @@ fi
 [ "${SKIP_COMMIT_FORMAT:-}" = "1" ] && exit 0
 
 cfg=$(git config --get agentic.commitTypes 2>/dev/null)
-all="feat fix docs style refactor perf test build ci chore revert $cfg ${COMMIT_EXTRA_TYPES:-}"
+file=$(sed 's/#.*//' "$(dirname "$0")/commit-types" 2>/dev/null | tr '\r\n' '  ')
+all="feat fix docs style refactor perf test build ci chore revert $cfg $file ${COMMIT_EXTRA_TYPES:-}"
 types=''
 allowed=''
 for t in $all; do

@@ -16,7 +16,7 @@ Refs: #123
 | Rule | Check |
 |---|---|
 | `type(scope): subject`, one space after the colon. `scope` is optional, `!` before the colon marks a breaking change | Rejected if wrong. Nothing may come before the type, so a prefix such as `[agent]` is rejected |
-| Type is one of `feat fix docs style refactor perf test build ci chore revert` | Rejected if unknown. Add project types with `git config agentic.commitTypes "ops deps"` or `COMMIT_EXTRA_TYPES` |
+| Type is one of `feat fix docs style refactor perf test build ci chore revert` | Rejected if unknown. Add project types in a tracked `scripts/agentic-ops/commit-types` file (words, `#` starts a comment), or with `git config agentic.commitTypes "ops deps"` (local only) or `COMMIT_EXTRA_TYPES` |
 | The description starts with a lowercase letter and has no period at the end | Rejected |
 | Imperative mood: "add", not "added" or "adds" | Warning, matched against a short list of common past and third-person verbs |
 | Subject (whole first line) of 50 characters or fewer | Warning above 50, rejected above 72 |

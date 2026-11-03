@@ -11,8 +11,8 @@ import sys
 
 ROOT = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
 SCRIPTS = os.path.join(ROOT, "scripts", "agentic-ops")
-STATE_FILE = "NOW.md"                    # handoff module only
-REVIEW_HEADING = "## Awaiting review"    # handoff module only
+STATE_FILE = os.environ.get("STATE_FILE", "NOW.md")                       # handoff module only
+REVIEW_HEADING = os.environ.get("REVIEW_HEADING", "## Awaiting review")  # handoff module only
 SHOW = ("GIT", "OPS", "HOOK")
 
 
