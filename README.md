@@ -1,6 +1,21 @@
+<div align="center">
+
 # genai-agentic-ops
+### Operating Rules for Multi-Agent Coding
 
 A reusable ruleset for running several AI coding agents in one repository without them stepping on each other, or on you.
+
+[![Version](https://img.shields.io/badge/version-v2.3.2-blue?style=flat-square)](#versions-and-pins)
+[![Rules](https://img.shields.io/badge/rules-AGENTS.md-informational?style=flat-square)](RULES.md)
+[![Kit](https://img.shields.io/badge/kit-Python%203%20%7C%20sh%20%7C%20PowerShell-4c566a?style=flat-square)](kit/README.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
+
+**Jump to:** [Quick start](#quick-start) · [Chief and workers](#chief-and-workers) · [Tool support](#tool-support) · [For AI agents](#for-ai-agents)
+</div>
+
+---
+
+> Built for people who run more than one AI coding agent in the same repository: a shared task log, a plan before every change, hard stops on destructive actions, and the expensive model kept for the work that needs it.
 
 The core is plain text: a rules block that your agents read and follow, plus a small live task log. An optional kit of hooks and scripts enforces part of those rules mechanically. Works with Claude Code, Gemini/Antigravity, Codex, Cursor, OpenCode and Roo, at different levels of support (see [Tool support](#tool-support)).
 
@@ -148,45 +163,64 @@ flowchart TD
 
 ### Process view
 
-The same flow as a swimlane diagram: events are circles, gateways are diamonds, and each lane is one role. Mermaid has no native BPMN notation, so this is a BPMN-style drawing, not a validated BPMN model.
+The same flow as a swimlane diagram: circles are events, diamonds are gateways, boxes are tasks, and each lane is one role. Mermaid has no native BPMN notation, so this is a BPMN-style drawing, not a validated BPMN model. The numbers match the table below.
 
 ```mermaid
 flowchart TD
-    subgraph LU["User"]
-        S(("Prompt"))
-        E(("Report"))
+    subgraph LU["Lane: User"]
+        S(("Start: prompt"))
+        E(("End: short report"))
     end
-    subgraph LC["Chief (main session)"]
-        C1["Classify the task"]
+    subgraph LC["Lane: Chief (main session)"]
+        C1["1. Classify the task"]
         G1{"Small fix, design,<br/>debugging or review?"}
-        C2["Do the work directly"]
-        C3["Read usage and estimate cost<br/>as % of the 5-hour window"]
-        G2{"Estimate above<br/>threshold?"}
-        C4["Write spec and a one-line reason"]
-        C5["Run verify command<br/>and git diff --stat"]
+        C2["2. Do the work directly"]
+        C3["3. Estimate cost as % of<br/>the 5-hour window"]
+        G2{"Above the<br/>threshold?"}
+        C4["4. Claim the task in<br/>docs/CURRENT_OPS.md"]
+        C5["5. Write the spec and<br/>a one-line reason"]
+        C8["8. Verify: run the command,<br/>check git diff --stat"]
         G3{"Passes and<br/>in scope?"}
         G4{"First failure?"}
-        C6["Reject once with<br/>a concrete fix"]
-        C7["Take over and finish"]
-        C8["Approve and log the task<br/>in docs/CURRENT_OPS.md"]
+        C9["9. Reject once with<br/>a concrete fix"]
+        C10["10. Take over and finish"]
+        C11["11. Approve, close the row,<br/>note estimate vs actual"]
     end
-    subgraph LW["Worker (cheaper model)"]
-        W1["Edit allowed files only"]
-        W2["Run verify command"]
-        W3["Report DONE or BLOCKED<br/>with evidence"]
+    subgraph LW["Lane: Worker (cheaper model)"]
+        W6["6. Edit allowed files only"]
+        W7["7. Run the verify command<br/>and report with evidence"]
+        G5{"DONE or<br/>BLOCKED?"}
     end
     S --> C1 --> G1
     G1 -- yes --> C2 --> E
     G1 -- no --> C3 --> G2
     G2 -- no --> C2
-    G2 -- yes --> C4 --> W1 --> W2 --> W3 --> C5 --> G3
-    G3 -- yes --> C8 --> E
+    G2 -- yes --> C4 --> C5 --> W6 --> W7 --> G5
+    G5 -- DONE --> C8 --> G3
+    G5 -- BLOCKED --> C10
+    G3 -- yes --> C11 --> E
     G3 -- no --> G4
-    G4 -- yes --> C6 --> W1
-    G4 -- no --> C7 --> C8
+    G4 -- yes --> C9 --> W6
+    G4 -- no --> C10 --> C11
 ```
 
-Read it left to right by lane: only the chief talks to the user, the worker never leaves its lane, and every path ends in the chief's approval or in the chief finishing the work.
+What each step does:
+
+| Step | Lane | What happens | Result |
+|---|---|---|---|
+| Start | User | You send a prompt to the session you are talking to. That session is the chief. | A task enters the flow. |
+| 1 | Chief | Decides what kind of task it is. Questions, small fixes (about 15 lines or less), design decisions, debugging that needs judgment and reviews are never delegated. | Go to 2 for those, otherwise go to 3. |
+| 2 | Chief | Does the work itself, with no spec and no worker. This is also the exit when the estimate is below the threshold. | Work done at the cost of one session. |
+| 3 | Chief | Reads the usage figures if the host exposes them, otherwise uses task size as a proxy, and estimates the cost as a percentage of the 5-hour window. Detail in "Choosing the threshold" below. | An estimate and the threshold that applies. |
+| 4 | Chief | Adds one `running` row for the task to `docs/CURRENT_OPS.md`, named `subagent-<purpose>-<n>`, so other agents see the work and the files are locked. | A visible claim on the files. |
+| 5 | Chief | Writes the spec: goal, allowed files, one verify command, evidence required. It also writes one line saying which threshold applied and why. The spec points the worker at the project rules file. | A bounded task the worker can follow without exploring the repository. |
+| 6 | Worker | Makes the change. It reads and edits only the files in the allowed list. It does not commit, push or run destructive commands. | Changed files inside the allowed list. |
+| 7 | Worker | Runs the verify command once and reports `DONE` or `BLOCKED` with the trimmed command output, the files changed, and anything skipped. It never approves its own work. | A report with evidence. |
+| 8 | Chief | Runs the verify command itself and `git diff --stat`, then compares the changed files with the allowed list. The worker's own report is not trusted. | A pass or fail, and a scope check. |
+| 9 | Chief | On the first failure, rejects once with one concrete fix instruction and sends the task back to the worker. | One retry, no review loop. |
+| 10 | Chief | Takes over: after a second failure, after a `BLOCKED` report, or when the diff shows a file outside the list (that change is reverted first). The chief finishes the task itself. | The task is finished by the chief. |
+| 11 | Chief | Approves at once when the test is green and the scope is clean, sets the log row to `done`, reads the usage figures again, and notes estimated against actual in the closing report. | A closed row and one calibration line. |
+| End | User | The chief sends a short report. The worker never talks to you directly. | You read what changed and how it was checked. |
 
 ### Threshold
 
@@ -199,23 +233,32 @@ The threshold is elastic:
 
 ### Choosing the threshold
 
+This is step 3 of the process view in detail.
+
 ```mermaid
 flowchart TD
-    A(["Task looks big"]) --> B{"Host exposes<br/>usage figures?"}
-    B -- yes --> C["Read 5-hour and weekly % used"]
-    C --> D{"5-hour at 70% or more,<br/>or weekly at 80% or more?"}
-    D -- yes --> T2["Threshold 2%"]
-    D -- no --> T5["Threshold 5%"]
-    B -- no --> P{"Any size proxy true?<br/>10+ files, long repeated test output,<br/>wide read sweep, batch over 2 min,<br/>bulk generation"}
-    P -- yes --> DEL["Delegate"]
-    P -- no --> SELF["Do it yourself"]
-    T2 --> X{"Estimated cost<br/>above threshold?"}
+    A(["T1. Task looks big"]) --> B{"T2. Does the host expose<br/>usage figures?"}
+    B -- yes --> C["T3. Read 5-hour and<br/>weekly percent used"]
+    C --> D{"T4. 5-hour at 70% or more,<br/>or weekly at 80% or more?"}
+    D -- yes --> T2["Threshold = 2%"]
+    D -- no --> T5["Threshold = 5%"]
+    T2 --> X{"T5. Estimated cost above<br/>the threshold?"}
     T5 --> X
-    X -- yes --> DEL
-    X -- no --> SELF
+    X -- yes --> DEL(["Delegate (go to step 4)"])
+    X -- no --> SELF(["Do it yourself (step 2)"])
+    B -- no --> P{"T6. Is any size proxy true?"}
+    P -- yes --> DEL
+    P -- no --> SELF
 ```
 
-With usage figures, the 5-hour and weekly percentages pick the threshold. Without them, a single true size proxy is enough to delegate.
+| Step | What happens |
+|---|---|
+| T1 | The chief has judged the task as possibly large (step 1 of the process view did not exclude it). |
+| T2 | It checks whether the host gives it real usage numbers. Some do, and some expose nothing. |
+| T3 | If yes, it reads the percent used for the 5-hour window and for the weekly limit. The values are whole numbers. |
+| T4 | It sets the threshold. When the quota is running low (5-hour window at 70% used or more, or weekly limit at 80% or more), smaller tasks move to workers, so the threshold drops from 5% to 2%. |
+| T5 | It compares its estimate of the task's cost, as a percentage of the 5-hour window, with the threshold. Above: delegate. Otherwise: do it directly. |
+| T6 | Without usage figures it falls back to size: about 10 or more files, a test or build loop with long repeated output, a wide read sweep where only the conclusion matters, a batch longer than about 2 minutes, or bulk generation. One true proxy is enough to delegate. |
 
 Where the host exposes usage figures, the chief reads the real numbers before and after the task. Where it does not, the chief uses task size as a proxy: about 10 or more files, long repeated test output, a wide read sweep, a batch over about 2 minutes.
 
