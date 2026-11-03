@@ -1,0 +1,8 @@
+# Shell scripts, hooks, Python and data files must keep LF line endings on every platform.
+# A CRLF checkout (core.autocrlf=true on Windows) breaks sh scripts, git hooks and the kit tests.
+*.sh text eol=lf
+*.py text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+kit/githooks/* text eol=lf
+kit/MANIFEST text eol=lf
