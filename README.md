@@ -146,12 +146,76 @@ flowchart TD
     R -- "no, second time" --> S
 ```
 
+### Process view
+
+The same flow as a swimlane diagram: events are circles, gateways are diamonds, and each lane is one role. Mermaid has no native BPMN notation, so this is a BPMN-style drawing, not a validated BPMN model.
+
+```mermaid
+flowchart TD
+    subgraph LU["User"]
+        S(("Prompt"))
+        E(("Report"))
+    end
+    subgraph LC["Chief (main session)"]
+        C1["Classify the task"]
+        G1{"Small fix, design,<br/>debugging or review?"}
+        C2["Do the work directly"]
+        C3["Read usage and estimate cost<br/>as % of the 5-hour window"]
+        G2{"Estimate above<br/>threshold?"}
+        C4["Write spec and a one-line reason"]
+        C5["Run verify command<br/>and git diff --stat"]
+        G3{"Passes and<br/>in scope?"}
+        G4{"First failure?"}
+        C6["Reject once with<br/>a concrete fix"]
+        C7["Take over and finish"]
+        C8["Approve and log the task<br/>in docs/CURRENT_OPS.md"]
+    end
+    subgraph LW["Worker (cheaper model)"]
+        W1["Edit allowed files only"]
+        W2["Run verify command"]
+        W3["Report DONE or BLOCKED<br/>with evidence"]
+    end
+    S --> C1 --> G1
+    G1 -- yes --> C2 --> E
+    G1 -- no --> C3 --> G2
+    G2 -- no --> C2
+    G2 -- yes --> C4 --> W1 --> W2 --> W3 --> C5 --> G3
+    G3 -- yes --> C8 --> E
+    G3 -- no --> G4
+    G4 -- yes --> C6 --> W1
+    G4 -- no --> C7 --> C8
+```
+
+Read it left to right by lane: only the chief talks to the user, the worker never leaves its lane, and every path ends in the chief's approval or in the chief finishing the work.
+
+### Threshold
+
 The threshold is elastic:
 
 | Condition | Threshold for delegating |
 |---|---|
 | Default | Estimated cost above 5% of the 5-hour usage window |
 | 5-hour window at 70% used or more, or weekly limit at 80% or more | Estimated cost above 2% |
+
+### Choosing the threshold
+
+```mermaid
+flowchart TD
+    A(["Task looks big"]) --> B{"Host exposes<br/>usage figures?"}
+    B -- yes --> C["Read 5-hour and weekly % used"]
+    C --> D{"5-hour at 70% or more,<br/>or weekly at 80% or more?"}
+    D -- yes --> T2["Threshold 2%"]
+    D -- no --> T5["Threshold 5%"]
+    B -- no --> P{"Any size proxy true?<br/>10+ files, long repeated test output,<br/>wide read sweep, batch over 2 min,<br/>bulk generation"}
+    P -- yes --> DEL["Delegate"]
+    P -- no --> SELF["Do it yourself"]
+    T2 --> X{"Estimated cost<br/>above threshold?"}
+    T5 --> X
+    X -- yes --> DEL
+    X -- no --> SELF
+```
+
+With usage figures, the 5-hour and weekly percentages pick the threshold. Without them, a single true size proxy is enough to delegate.
 
 Where the host exposes usage figures, the chief reads the real numbers before and after the task. Where it does not, the chief uses task size as a proxy: about 10 or more files, long repeated test output, a wide read sweep, a batch over about 2 minutes.
 
