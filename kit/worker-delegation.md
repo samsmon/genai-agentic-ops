@@ -69,6 +69,8 @@ Every delegation prompt also points the worker at the project's rules file (rule
 
 1. Run the verify command yourself. Do not trust the worker's report of it.
 2. Run `git diff --stat` and compare the files with `Allowed Files`. A file outside the list fails the check: revert that change, then finish the rest yourself.
+
+Where the `scripts` module is installed, `scripts/agentic-ops/worker-check.*` does both checks in one command. Before the worker starts: `worker-check snapshot --out task.snap`, so edits you made yourself do not count. After `DONE`: `worker-check check --allow 'src/a.js,tests/' --verify '<the spec's verify command>' --since task.snap --stat`. It fails on a file outside the list, on a protected file (secrets, keys, hook and agent folders, rules files, CI workflows, the ops log; `ALLOW_SENSITIVE=1` lifts this, on the user's say-so only), or on a failing verify command. Details: `kit/README.md`. The kit also ships a Claude Code subagent template for the worker, `claude/agents/worker.md`, installed with the Claude adapter.
 3. If something fails, reject once with one concrete fix instruction. If it fails again, take over. No third round.
 4. Test green and scope clean: approve at once. No cosmetic review rounds.
 5. Record the task in `docs/CURRENT_OPS.md` as `subagent-<purpose>-<n>` (rule 3) and report to the user in a few lines.
@@ -100,7 +102,7 @@ Percentages are illustrative.
 
 - The estimate is a guess. Treat it as a way to avoid obviously wasteful runs, not as a budget.
 - Usage figures are whole percentages and exist only on some hosts.
-- Enforcement is text. If you want a hard stop, add a hook or a scope-check script; that is a separate change (rule 12).
+- Enforcement is mostly text. `worker-check` turns the chief's scope and verify checks into one command, but nothing makes the chief run it, and nothing stops a worker from writing a file; it only makes that visible. For a hard stop, add a hook (rule 12).
 - The first run of a worker pays a cold-start cost; many tiny delegations cost more than doing the work in place.
 
 ## Not verified

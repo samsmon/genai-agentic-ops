@@ -294,7 +294,8 @@ Limits: a public remote shows the overlay branch (use a private repository for t
 | Ask before force push, `reset --hard`, recursive delete | Guard on shell commands | Claude Code and Cursor can ask; Codex, OpenCode and Antigravity block with a "confirm with the user" message (Antigravity documents `ask` but did not enforce it in a live run) |
 | No secrets or large/binary files in commits | `pre-commit` and `precommit-check` | Any agent that commits |
 | Sync, stale-lock and unclosed-row checks, oversize rules-file warning | `start-brief`, `wrap-check`, `precommit-check` | Any agent that runs them; running them is still a written rule |
-| Plan before changing, approval gates, trust boundary, harness suggestions, chief and worker rule | Nothing | Text only: depends on the agent following it |
+| Scope and verify check after a worker reports `DONE` (changed files against the allowed list, protected files, the verify command) | `worker-check` | Any agent that runs it; running it is still a written rule |
+| Plan before changing, approval gates, trust boundary, harness suggestions, the chief and worker rule itself | Nothing | Text only: depends on the agent following it |
 
 Hook enforcement can be bypassed by an agent that edits the hook files, and git hooks can be skipped by whoever commits. Treat the kit as a safety net, not a sandbox.
 
@@ -340,6 +341,7 @@ Limits to know about:
 | [`kit/compat.md`](kit/compat.md) | Sources for the tool adapters, with access dates |
 | [`kit/harness-builder.md`](kit/harness-builder.md) | Detail for rule 12 |
 | [`kit/worker-delegation.md`](kit/worker-delegation.md) | Detail for the chief and worker rule |
+| `kit/scripts/worker-check.*`, `kit/claude/agents/worker.md` | The chief's scope and verify check in one command, and a Claude Code subagent template for the worker |
 | [`kit/headless-delegation.md`](kit/headless-delegation.md) | Notes from a live run of one agent calling another agent's CLI |
 | [`kit/MANIFEST`](kit/MANIFEST) | The one list of kit files that the installer, `doctor` and the tests read |
 | [`CHANGELOG.md`](CHANGELOG.md) | Release notes |
