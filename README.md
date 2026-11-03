@@ -5,7 +5,7 @@
 
 A reusable ruleset for running several AI coding agents in one repository without them stepping on each other, or on you.
 
-[![Version](https://img.shields.io/badge/version-v2.3.2-blue?style=flat-square)](#versions-and-pins)
+[![Version](https://img.shields.io/badge/version-v2.4.0-blue?style=flat-square)](#versions-and-pins)
 [![Rules](https://img.shields.io/badge/rules-AGENTS.md-informational?style=flat-square)](RULES.md)
 [![Kit](https://img.shields.io/badge/kit-Python%203%20%7C%20sh%20%7C%20PowerShell-4c566a?style=flat-square)](kit/README.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -19,7 +19,7 @@ A reusable ruleset for running several AI coding agents in one repository withou
 
 The core is plain text: a rules block that your agents read and follow, plus a small live task log. An optional kit of hooks and scripts enforces part of those rules mechanically. Works with Claude Code, Gemini/Antigravity, Codex, Cursor, OpenCode and Roo, at different levels of support (see [Tool support](#tool-support)).
 
-Status: v2.3.2 is the latest tagged state. The chief and worker rule described below is unreleased. License: MIT.
+Status: v2.4.0 is the latest release (git tag and GitHub release). License: MIT.
 
 If you are an AI agent, go to [For AI agents](#for-ai-agents).
 
@@ -334,13 +334,16 @@ Used for real, with the rules text (`AGENTS.md`), by Gemini/Antigravity and Clau
 - v2 comes from what the cloud-ops repository needed after v1: its local copy of the block drifted (a "user runs git" policy), and it grew hooks, session scripts and a review protocol. v2 puts those back into a reusable form. At the time of writing the v2 kit has been run only against its own test suite on one Windows machine (PowerShell 5.1, Git Bash, Python 3.11); it has not yet been applied to a second real repository, and the `.sh` scripts have not been run on Linux or macOS.
 - The harness builder rule (recommend, never build unasked) is new and untested over a long period. Whether agents notice the triggers reliably is an open question.
 - The chief and worker rule is new. The thresholds are a starting point and have no field data yet.
+- 2026-11-03, head-to-head benchmark: headless `claude -p`, one model (Sonnet), one small task (add a function and fix one bug in a three-file Node project), 9 interleaved runs per setup. With this kit installed (v2.3.2 plus the then-unreleased chief and worker rule) 7 of 9 runs finished the task, against 9 of 9 with no rules at all. Mean cost was 0.174 USD against 0.165 USD (+5.7%, 95% interval -5.5% to +16.5%), so no cost difference can be claimed either way. The two failures made no edit: the rule to wait for a plan approval cannot be met when nobody can answer. On a four-file refactor (3 runs, indicative only) the kit cost more (0.189 against 0.145 USD) and one run edited the ops log outside the file list it was given. v2.4.0 adds a non-interactive clause to rule 1 for those two cases; it has not been benchmarked again.
+- The chief and worker threshold never triggered in that benchmark: a run used about 0.6% of the 5-hour window, far below the 5% threshold, and small fixes are on the never-delegate list. Delegation itself is still untested against real usage figures.
+- In `claude -p`, a workspace that is not trusted ignores the `permissions.allow` entries from `.claude/settings.json` (Claude Code prints that it did so). Whether the guard hooks run in that case was not verified.
 - 2026-10-23, one bootstrap test per model on a throwaway repository, Windows: Gemini 3.8 Flash High (in Antigravity) installed the v2.2 kit and produced a correct hidden-mode result, but its overlay held bytecode files, duplicate copies and the adapters of tools it was not asked for, `git push --force` ran without a prompt after an `ask` answer, and the hook command path did not resolve. GPT-OSS 120B planned a bootstrap without the `AGENTS.md` rules block, described hidden mode backwards and invented kit files. These findings are what v2.3 changes: a deterministic installer, `ask` answered as `deny` for Antigravity, a cwd-independent hook command, bytecode kept out of the overlay, and shell tests that also run from the installed layout. One model per tool is not a benchmark.
 
 Limits to know about:
 
 - There is no long-term data yet on stale locks or conflict rates.
 - Without the kit nothing enforces the rules. They work because current agents follow written instructions, and a different agent may follow them less well. With the kit, only the parts listed above are enforced, and only where the hook runs.
-- Rule files have size limits in some tools: Antigravity truncates any single file over 24,000 bytes and Codex stops at 32 KiB combined by default. The v2 rules block is under 9,000 characters (about 11,200 with the git-policy, hidden-mode and handoff snippets filled in), and your whole `AGENTS.md` counts. `start-brief` and `precommit-check` warn.
+- Rule files have size limits in some tools: Antigravity truncates any single file over 24,000 bytes and Codex stops at 32 KiB combined by default. The v2 rules block is under 9,400 characters (about 11,700 with the git-policy, hidden-mode and handoff snippets filled in), and your whole `AGENTS.md` counts. `start-brief` and `precommit-check` warn.
 - It does not replace branch protection, CI or code review.
 
 ## Repository layout
@@ -365,7 +368,8 @@ Always pin to a commit SHA. The rules block is the same across v2.x unless the c
 
 | Version | Commit SHA | Notes |
 |---|---|---|
-| v2.3.2 | `32c29b658bf45e00ccf2a3c2915a2bdb48cc4499` | Current. Use this or later with Antigravity |
+| v2.4.0 | tag `v2.4.0` | Current. Chief and worker rule, `worker-check`, English-only rule, non-interactive clause, LF line endings |
+| v2.3.2 | `32c29b658bf45e00ccf2a3c2915a2bdb48cc4499` | Previous. Use this or later with Antigravity |
 | v2.3.1 | `8fcf69b0e9e97c698a489d133f523c6d99c83a0f` | Ships an Antigravity hook the IDE cannot run |
 | v2.3.0 | `bca34a37edd8725fa2875c0f831d583c5500f7c1` | Cannot finish a hidden-mode install on Windows; same Antigravity hook problem |
 | v2.2.0 | `bb594df1a2e18a143cc55e911872a0cb33cc8312` | Git policy rework, hidden mode |
@@ -373,7 +377,7 @@ Always pin to a commit SHA. The rules block is the same across v2.x unless the c
 | v2.0.0 | `5baef69cde25b196ad2c0cb19fc9595fa50e80ab` | First v2 |
 | v1 | `e6061fec3e4388efd73d2b0e62525972e3f1acc1` | v1 rules, no kit; stays valid for projects that remain on v1 |
 
-The chief and worker rule is in the unreleased state of `main` and is not part of any pin above.
+From v2.4.0 on, every release also has a git tag and a GitHub release; pin the tag's commit SHA the same way.
 
 ## Contributing
 
