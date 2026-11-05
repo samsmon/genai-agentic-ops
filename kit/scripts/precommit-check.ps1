@@ -1,7 +1,7 @@
 # Called by .githooks/pre-commit. No model; silent when it passes.
 # Blocks: large or media/binary files, and likely secrets in added lines (values are never printed).
 # Warns: rules file larger than -MaxRulesBytes (keep it small; see the token discipline rule), and over 24,000 bytes (Antigravity limit).
-# Overrides, on the user's say-so only: ALLOW_BIG_FILES=1, ALLOW_SECRET_PATTERN=1.
+# Overrides, on the user's say-so only: ALLOW_BIG_FILES=1, ALLOW_SECRET_PATTERN=1, ALLOW_LARGE_SOURCE=1.
 # SECRET_SCAN_SKIP='path/pattern/*,other/*' skips the secret scan for those paths (-like patterns).
 param(
   [string]$Staged = '',
@@ -36,6 +36,20 @@ if ($files.Count -gt 0 -and (Test-Path -LiteralPath (Join-Path $Root '.git'))) {
     if ($len -gt $maxBytes -or $f -match $bigExt) {
       Write-Output "COMMIT REJECTED: large file or media/binary dump staged: $f ($([int]($len / 1KB)) KB). Keep it outside the repo or in .gitignore. Exception is the user's call: rerun with ALLOW_BIG_FILES=1."
       if ($env:ALLOW_BIG_FILES -ne '1') { $rc = 1 }
+    }
+  }
+  $maxSourceLines = 500
+  $sourceExt = '\.(html|htm|css|js|jsx|ts|tsx|vue|svelte|py|go|rs|php|rb|java|c|cpp|h|cs)$'
+  $vendorOrMin = '(\.min\.|\.bundle\.|vendor\/|vendor\\|node_modules\/|node_modules\\)'
+  foreach ($f in $files) {
+    $fp = Join-Path $Root $f
+    if (-not (Test-Path -LiteralPath $fp -PathType Leaf)) { continue }
+    if ($f -match $sourceExt -and $f -notmatch $vendorOrMin) {
+      $lines = [System.IO.File]::ReadAllLines($fp).Length
+      if ($lines -gt $maxSourceLines) {
+        Write-Output "COMMIT REJECTED: source file exceeds $maxSourceLines lines: $f ($lines lines). Modularize into smaller components (<300 lines recommended). Override is the user's call: rerun with ALLOW_LARGE_SOURCE=1."
+        if ($env:ALLOW_LARGE_SOURCE -ne '1') { $rc = 1 }
+      }
     }
   }
   $pats = [ordered]@{

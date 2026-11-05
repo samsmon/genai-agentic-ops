@@ -60,5 +60,17 @@ Expect 'file over 5 MB -> 1' ($r.code -eq 1)
 $env:ALLOW_BIG_FILES = '1'; $r = Run 'big.dat'; Remove-Item Env:\ALLOW_BIG_FILES
 Expect 'ALLOW_BIG_FILES=1 -> 0 (message still printed)' (($r.code -eq 0) -and ($r.out -match 'large file'))
 
+# source file line count check (anti-monolith)
+$bigSource = (1..501 | ForEach-Object { "console.log('line $_');" }) -join "`r`n"
+$r = Stage-Run 'script.js' $bigSource
+Expect 'source file over 500 lines -> 1 + REJECTED' (($r.code -eq 1) -and ($r.out -match 'source file exceeds 500 lines'))
+$env:ALLOW_LARGE_SOURCE = '1'; $r = Run 'script.js'; Remove-Item Env:\ALLOW_LARGE_SOURCE
+Expect 'ALLOW_LARGE_SOURCE=1 -> 0 (message still printed)' (($r.code -eq 0) -and ($r.out -match 'source file exceeds 500 lines'))
+$smallSource = (1..50 | ForEach-Object { "console.log('line $_');" }) -join "`r`n"
+$r = Stage-Run 'script.js' $smallSource
+Expect 'source file under 500 lines -> 0' ($r.code -eq 0)
+$r = Stage-Run 'vendor.min.js' $bigSource
+Expect 'minified source over 500 lines -> 0' ($r.code -eq 0)
+
 Remove-Item $root -Recurse -Force -ErrorAction SilentlyContinue
 if ($fail) { exit 1 } else { Write-Output 'ALL TESTS PASSED'; exit 0 }

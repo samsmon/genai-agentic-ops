@@ -3,7 +3,7 @@
 # Usage: precommit-check.sh [--root DIR] [--staged-file LIST] [--rules-file AGENTS.md] [--max-rules-bytes N]
 # Blocks: large or media/binary files, and likely secrets in added lines (values are never printed).
 # Warns: rules file larger than --max-rules-bytes, and over 24,000 bytes (Antigravity limit).
-# Overrides, on the user's say-so only: ALLOW_BIG_FILES=1, ALLOW_SECRET_PATTERN=1.
+# Overrides, on the user's say-so only: ALLOW_BIG_FILES=1, ALLOW_SECRET_PATTERN=1, ALLOW_LARGE_SOURCE=1.
 # SECRET_SCAN_SKIP='dir/*,other/*' skips the secret scan for those paths (shell glob patterns).
 ROOT=''; LIST=''; RULES=AGENTS.md; MAXRULES=16384
 while [ $# -gt 0 ]; do
@@ -39,6 +39,20 @@ for f in $files; do
     echo "COMMIT REJECTED: large file or media/binary dump staged: $f ($((len / 1024)) KB). Keep it outside the repo or in .gitignore. Exception is the user's call: rerun with ALLOW_BIG_FILES=1."
     [ "$ALLOW_BIG_FILES" = 1 ] || rc=1
   fi
+  case "$f" in
+    *.html|*.htm|*.css|*.js|*.jsx|*.ts|*.tsx|*.vue|*.svelte|*.py|*.go|*.rs|*.php|*.rb|*.java|*.c|*.cpp|*.h|*.cs)
+      case "$f" in
+        *.min.*|*.bundle.*|*node_modules/*|*vendor/*) ;;
+        *)
+          lines=$(wc -l < "$ROOT/$f" | tr -d ' ')
+          if [ "$lines" -gt 500 ]; then
+            echo "COMMIT REJECTED: source file exceeds 500 lines: $f ($lines lines). Modularize into smaller components (<300 lines recommended). Override is the user's call: rerun with ALLOW_LARGE_SOURCE=1."
+            [ "$ALLOW_LARGE_SOURCE" = 1 ] || rc=1
+          fi
+          ;;
+      esac
+      ;;
+  esac
 done
 IFS=$OLDIFS
 
@@ -55,6 +69,7 @@ added=$(git -C "$ROOT" -c core.quotepath=off diff --cached -U0 --no-color 2>/dev
 hits=''
 scan() {  # $1 label, $2 regex
   [ -n "$2" ] || return
+  printf '%s\n' "$added" | $GP -q -- "$2" || return
   printf '%s\n' "$added" | while IFS="$(printf '\t')" read -r path line; do
     skipped=0
     if [ -n "$SECRET_SCAN_SKIP" ]; then
@@ -67,6 +82,7 @@ scan() {  # $1 label, $2 regex
   done
 }
 scan_literal_ere() {  # PCRE-free fallback for the literal-secret pattern
+  printf '%s\n' "$added" | grep -Eq -- "$LITERAL_ERE" || return
   printf '%s
 ' "$added" | while IFS="$(printf '	')" read -r path line; do
     skipped=0

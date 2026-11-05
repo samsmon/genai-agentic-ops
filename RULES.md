@@ -37,7 +37,7 @@ You are asked to apply this document to the current project. Follow the numbered
       - **END without BEGIN** (the BEGIN line was lost): the block starts at the line `## Agent Rules (genai-agentic-ops vN)` and ends at END. Show that range in the plan, then replace it, writing both markers back.
       - **BEGIN without END, or the `## Agent Rules (genai-agentic-ops vN)` heading with no markers at all:** the end of the block is unknown. Stop, show the user where you think it ends, and ask before replacing anything.
       - **Neither marker nor heading:** append the block at the end of the file.
-      Rules file size: Antigravity truncates any single rule file over 24,000 bytes. If `AGENTS.md` is larger, say so in the plan and suggest moving detail into linked docs. The Part B block is under 9,400 characters (about 11,700 with the git-policy, hidden-mode and handoff snippets filled in).
+      Rules file size: Antigravity truncates any single rule file over 24,000 bytes. If `AGENTS.md` is larger, say so in the plan and suggest moving detail into linked docs. The Part B block is under 9,700 characters (about 12,000 with the git-policy, hidden-mode and handoff snippets filled in).
    2. **Pointer lines, never duplicated content.** `CLAUDE.md` (Claude Code does not read `AGENTS.md` by itself) gets `@AGENTS.md`; create it if the user runs Claude Code. Codex, Cursor and OpenCode read `AGENTS.md` directly, so they need no extra file. Antigravity reads `AGENTS.md` too (current versions); only if a `GEMINI.md` already exists, add one line to it telling the agent to read `AGENTS.md`, and do not create a `GEMINI.md` just for this. Any other existing rules file (`.cursorrules`, etc.) gets one pointer line as well.
    3. **CURRENT_OPS location.** Look for an existing ops log in any location or casing (`CURRENT_OPS.md` at root, `docs/current_ops.md`, etc.). If none exists, create `docs/CURRENT_OPS.md` and `docs/CURRENT_OPS-archive.md` from the Part C templates. If one exists, ask the user to pick one:
       1. **Keep**: leave it where it is and use it as the log (update the path in the Rules Block to match).
@@ -104,6 +104,7 @@ Without explicit confirmation, NEVER:
 ### 5. Verify & close out
 - Never claim "done/working" before verifying (run tests/live checks). If something failed or was skipped, say so plainly.
 - Before handing off: `git diff --stat` to catch accidental deletions.
+- Anti-monolith check: verify source files (.html, .css, .js, .ts, .py, etc.) do not exceed 500 lines (target < 300). Decompose modularly before staging/committing; never accumulate monolithic files.
 - Commit messages, written or suggested: Conventional Commits, `type(scope): subject` (imperative, lowercase, no final period, 50 characters or fewer, 72 max), blank line, body wrapped at 72 saying what and why. Nothing before the type. Details: `kit/commit-format.md`. Who commits: section 9.
 - Language: everything written into the project is English: code comments, logs, ops-log rows, docs, discussion files, PR text, commit messages. Chat follows the user's language. A project or user rule naming another language for a file wins (section 7).
 - End with a short report: what changed, verification result, remaining work.
@@ -124,14 +125,15 @@ Without explicit confirmation, NEVER:
 ### 9. Git policy
 <!-- GIT-POLICY -->
 
-### 10. Token discipline
+### 10. Token & code discipline
+- Source files must stay modular (< 500 lines max, target < 300). Decompose components and utilities instead of letting files bloat.
 - Never paste whole files into replies. List changed files with a one-line summary each.
 - Read large files (over ~24 KB: docs, logs, JSON) with offset/limit or search first; never read logs or archives in full.
 - Keep command output small (`tail`, `head`, `--stat`); do not re-run a command for the same output.
 - Keep this rules file short: move rarely used detail into a doc and link to it.
 
 ### 11. Enforcement (be honest about it)
-- Rules are machine-enforced only where the kit is installed: the guard hook (one adapter per tool: Claude Code, Codex, Cursor, OpenCode, Antigravity; blocks agent trailers, identity changes, `--no-verify`, sleep-loop polling, and big full reads where the tool allows; asks before destructive commands, or blocks where the tool cannot ask), git hooks (`core.hooksPath`: commit-msg checks attribution and Conventional Commits, pre-commit scans secrets and big files), and the scripts in `scripts/agentic-ops/`.
+- Rules are machine-enforced only where the kit is installed: the guard hook (one adapter per tool: Claude Code, Codex, Cursor, OpenCode, Antigravity; blocks agent trailers, identity changes, `--no-verify`, sleep-loop polling, and big full reads where the tool allows; asks before destructive commands, or blocks where the tool cannot ask), git hooks (`core.hooksPath`: commit-msg checks attribution and Conventional Commits, pre-commit scans secrets, big files and source line limits), and the scripts in `scripts/agentic-ops/`.
 - Everything else is text that relies on you following it. Hook support and live testing differ per tool (matrix in `kit/README.md`); git hooks cover any agent that commits.
 - Never claim a rule is enforced without checking that its hook is installed and active (`git config core.hooksPath`, `.claude/settings.json`).
 

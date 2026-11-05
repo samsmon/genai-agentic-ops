@@ -343,7 +343,7 @@ Limits to know about:
 
 - There is no long-term data yet on stale locks or conflict rates.
 - Without the kit nothing enforces the rules. They work because current agents follow written instructions, and a different agent may follow them less well. With the kit, only the parts listed above are enforced, and only where the hook runs.
-- Rule files have size limits in some tools: Antigravity truncates any single file over 24,000 bytes and Codex stops at 32 KiB combined by default. The v2 rules block is under 9,400 characters (about 11,700 with the git-policy, hidden-mode and handoff snippets filled in), and your whole `AGENTS.md` counts. `start-brief` and `precommit-check` warn.
+- Rule files have size limits in some tools: Antigravity truncates any single file over 24,000 bytes and Codex stops at 32 KiB combined by default. The v2 rules block is under 9,700 characters (about 12,000 with the git-policy, hidden-mode and handoff snippets filled in), and your whole `AGENTS.md` counts. `start-brief` and `precommit-check` warn.
 - It does not replace branch protection, CI or code review.
 
 ## Repository layout

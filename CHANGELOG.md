@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+- Pre-commit & anti-monolith: `kit/scripts/precommit-check.ps1` and `kit/scripts/precommit-check.sh` check staged source files (`.html`, `.css`, `.js`, `.ts`, `.py`, etc., excluding `.min.*`, `.bundle.*`, `vendor/`, `node_modules/`) and reject files exceeding 500 lines with an explanation to decompose modularly into components/modules (< 300 lines recommended). Override on user confirmation with `ALLOW_LARGE_SOURCE=1`. Tests added in `kit/tests/precommit-check.tests.ps1` and `kit/tests/scripts.tests.sh`. Also optimized secret scanner in `precommit-check.sh` to pre-filter matching lines before per-line regex evaluations.
+- Rules block (sections 5 and 10): added anti-monolith / file length limit rule: before staging/committing, verify source files do not exceed 500 lines; decompose monolithic files modularly before committing. Updated block limit assertions to 9,700 characters (12,000 with snippets) in `kit/tests/test_rules_block.py`, `RULES.md`, and `README.md`.
 - Kit: `scripts/commit-msg-check.sh` also reads a tracked `commit-types` file next to it (words, `#` starts a comment), so extra commit types follow the repository across devices instead of living in local `git config`.
 - Kit: `claude/hooks/session_start.py` reads `STATE_FILE` and `REVIEW_HEADING` from the environment (defaults unchanged), like `handoff-check.*`, so a project with a non-English review heading can set them in `.claude/settings.json`.
 
