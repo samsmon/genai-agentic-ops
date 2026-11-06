@@ -8,6 +8,9 @@ tool:claude|copy|claude/hooks/guard.py|.claude/hooks/guard.py
 tool:claude|copy|claude/hooks/session_start.py|.claude/hooks/session_start.py
 tool:claude|copy|claude/agents/worker.md|.claude/agents/worker.md
 tool:claude|merge-json|claude/settings.json|.claude/settings.json
+tool:claude|copy|skills/modular-code/SKILL.md|.claude/skills/modular-code/SKILL.md
+tool:claude|copy|skills/worker-delegation/SKILL.md|.claude/skills/worker-delegation/SKILL.md
+tool:claude|copy|skills/harness-builder/SKILL.md|.claude/skills/harness-builder/SKILL.md
 tool:codex|copy|adapters/codex/guard.py|.codex/hooks/guard.py
 tool:codex|merge-json|adapters/codex/hooks.json|.codex/hooks.json
 tool:cursor|copy|adapters/cursor/guard.py|.cursor/hooks/guard.py
@@ -15,6 +18,9 @@ tool:cursor|merge-json|adapters/cursor/hooks.json|.cursor/hooks.json
 tool:opencode|copy|adapters/opencode/agentic-ops-guard.js|.opencode/plugins/agentic-ops-guard.js
 tool:antigravity|copy|adapters/antigravity/guard.py|.agents/hooks/guard.py
 tool:antigravity|merge-json|adapters/antigravity/hooks.json|.agents/hooks.json
+tool:antigravity|copy|skills/modular-code/SKILL.md|.agent/skills/modular-code/SKILL.md
+tool:antigravity|copy|skills/worker-delegation/SKILL.md|.agent/skills/worker-delegation/SKILL.md
+tool:antigravity|copy|skills/harness-builder/SKILL.md|.agent/skills/harness-builder/SKILL.md
 githooks|copy-exec|githooks/commit-msg|.githooks/commit-msg
 githooks|copy-exec|githooks/pre-commit|.githooks/pre-commit
 githooks|copy|scripts/commit-msg-check.sh|scripts/agentic-ops/commit-msg-check.sh

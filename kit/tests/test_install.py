@@ -89,6 +89,7 @@ try:
     expect("visible install: exit 0", r.returncode == 0)
     t = tree(p)
     expect("visible install: antigravity adapter and hooks.json present", ".agents/hooks/guard.py" in t and ".agents/hooks.json" in t)
+    expect("visible install: antigravity skills present", ".agent/skills/modular-code/SKILL.md" in t and ".agent/skills/worker-delegation/SKILL.md" in t and ".agent/skills/harness-builder/SKILL.md" in t)
     expect("visible install: no other tool's folder", not any(x.startswith((".codex/", ".cursor/", ".opencode/", ".claude/")) for x in t))
     expect("visible install: no bytecode", not any("__pycache__" in x or x.endswith(".pyc") for x in t))
     kit_files = [x for x in t if x.startswith("scripts/agentic-ops/") and not x.endswith("INSTALLED.json")]
@@ -178,6 +179,7 @@ try:
     expect("pointers: CLAUDE.md created with @AGENTS.md", read(os.path.join(p6, "CLAUDE.md")).strip() == "@AGENTS.md")
     expect("pointers: existing GEMINI.md gets one pointer line", "AGENTS.md" in read(os.path.join(p6, "GEMINI.md")) and read(os.path.join(p6, "GEMINI.md")).startswith("# gemini notes"))
     expect("pointers: .cursorrules and .codex are not created", not os.path.exists(os.path.join(p6, ".cursorrules")) and not os.path.exists(os.path.join(p6, ".codex")))
+    expect("skills: claude and antigravity skills installed", os.path.isfile(os.path.join(p6, ".claude", "skills", "modular-code", "SKILL.md")) and os.path.isfile(os.path.join(p6, ".agent", "skills", "modular-code", "SKILL.md")))
 
     # ---- merging into an existing hook file, including the v2.2 entry (python -I) being upgraded in place
     p7 = mkproject(BASE, "merge")

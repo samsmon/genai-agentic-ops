@@ -63,9 +63,9 @@ Expect 'ALLOW_BIG_FILES=1 -> 0 (message still printed)' (($r.code -eq 0) -and ($
 # source file line count check (anti-monolith)
 $bigSource = (1..501 | ForEach-Object { "console.log('line $_');" }) -join "`r`n"
 $r = Stage-Run 'script.js' $bigSource
-Expect 'source file over 500 lines -> 1 + REJECTED' (($r.code -eq 1) -and ($r.out -match 'source file exceeds 500 lines'))
+Expect 'source file over 500 lines -> 1 + REJECTED' (($r.code -eq 1) -and ($r.out -match 'source file exceeds 500 lines') -and ($r.out -match 'modular-code'))
 $env:ALLOW_LARGE_SOURCE = '1'; $r = Run 'script.js'; Remove-Item Env:\ALLOW_LARGE_SOURCE
-Expect 'ALLOW_LARGE_SOURCE=1 -> 0 (message still printed)' (($r.code -eq 0) -and ($r.out -match 'source file exceeds 500 lines'))
+Expect 'ALLOW_LARGE_SOURCE=1 -> 0 (message still printed)' (($r.code -eq 0) -and ($r.out -match 'source file exceeds 500 lines') -and ($r.out -match 'modular-code'))
 $smallSource = (1..50 | ForEach-Object { "console.log('line $_');" }) -join "`r`n"
 $r = Stage-Run 'script.js' $smallSource
 Expect 'source file under 500 lines -> 0' ($r.code -eq 0)

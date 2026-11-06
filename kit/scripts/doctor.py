@@ -248,7 +248,7 @@ def main():
         et = open(exc, encoding="utf-8", errors="replace").read() if os.path.isfile(exc) else ""
         add("PASS" if "BEGIN agentic-ops" in et else "FAIL", "hidden mode: .git/info/exclude has the agentic block")
         add("PASS" if os.path.isdir(ov) else "FAIL", "hidden mode: overlay git dir (.git/agentic) exists")
-        rc, tracked = git(project, "ls-files", "--", "AGENTS.md", "CLAUDE.md", "GEMINI.md", ".claude/", ".cursor/", ".codex/", ".agents/", ".opencode/",
+        rc, tracked = git(project, "ls-files", "--", "AGENTS.md", "CLAUDE.md", "GEMINI.md", ".claude/", ".cursor/", ".codex/", ".agents/", ".agent/", ".opencode/",
                           ".githooks/", "scripts/agentic-ops/", "docs/CURRENT_OPS.md")
         add("PASS" if not tracked else "FAIL", "hidden mode: no agentic file is tracked in the project history", tracked.replace("\n", ", ")[:160])
         if os.path.isdir(ov):
