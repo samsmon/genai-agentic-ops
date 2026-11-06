@@ -1,0 +1,37 @@
+# Gemini CLI Command Definitions for Agentic Orchestrator
+# Implements Milestone 5 Host Integration for Google Gemini CLI (ADR-001)
+
+[commands.plan-validate]
+description = "Validate a workflow plan against contracts/plan.schema.json and safety policies"
+command = "python -m orchestrator.cli.main plan validate"
+args = ["<plan_file>"]
+
+[commands.plan-submit]
+description = "Submit a validated workflow plan to initialize task execution"
+command = "python -m orchestrator.cli.main plan submit"
+args = ["<plan_file>"]
+
+[commands.task-run]
+description = "Execute an assigned worker task within the shared workspace"
+command = "python -m orchestrator.cli.main task run"
+args = ["<task_id>"]
+
+[commands.task-approve]
+description = "Approve a verified task using a one-time human authorization token"
+command = "python -m orchestrator.cli.main task approve"
+args = ["<task_id>"]
+
+[commands.workflow-run]
+description = "Execute eligible workflow tasks sequentially across the workspace"
+command = "python -m orchestrator.cli.main workflow run"
+args = ["<workflow_id>"]
+
+[commands.status]
+description = "Query active workflow and task statuses"
+command = "python -m orchestrator.cli.main task list"
+args = []
+
+[commands.approval-show]
+description = "Inspect pending human approval requests and single-use tokens"
+command = "python -m orchestrator.cli.main approval show"
+args = ["<task_id>"]

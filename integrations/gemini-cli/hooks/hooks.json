@@ -1,0 +1,40 @@
+{
+  "active-lock-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -B -I integrations/gemini-cli/hooks/active_lock_guard.py",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -B -I integrations/gemini-cli/hooks/active_lock_guard.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -B -I integrations/gemini-cli/hooks/active_lock_guard.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
