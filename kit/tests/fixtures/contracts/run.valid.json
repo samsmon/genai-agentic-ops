@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "run_id": "run-001-bootstrap",
+  "workflow_id": "wf-arch-bootstrap",
+  "status": "completed",
+  "host": {
+    "hostname": "workstation-pc",
+    "pid": 12844,
+    "process_start_time": "2026-11-06T08:50:00Z"
+  },
+  "intent": {
+    "target_state": "completed",
+    "action": "execute_task_001",
+    "timestamp": "2026-11-06T08:55:00Z"
+  },
+  "workspace_baseline": {
+    "git_commit": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "clean": true,
+    "snapshot_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "timestamp": "2026-11-06T08:51:00Z"
+  },
+  "active_task_id": "task-001-schemas",
+  "created_at": "2026-11-06T08:50:00Z",
+  "updated_at": "2026-11-06T09:00:00Z",
+  "completed_at": "2026-11-06T09:00:00Z"
+}

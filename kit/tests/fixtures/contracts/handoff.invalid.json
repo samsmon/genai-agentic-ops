@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "task_id": "not_a_valid_task_id",
+  "workflow_id": "bad_wf",
+  "sender": {
+    "runtime": ""
+  },
+  "recipient": {},
+  "objective": "",
+  "allowed_paths": [],
+  "protected_paths": [],
+  "acceptance_criteria": []
+}

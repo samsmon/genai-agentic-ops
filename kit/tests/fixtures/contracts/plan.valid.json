@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "workflow_id": "wf-arch-bootstrap",
+  "title": "Bootstrap Architecture Contracts",
+  "description": "Establish schemas and ADRs for the repository",
+  "planner": {
+    "id": "host",
+    "runtime": "host",
+    "attested": false
+  },
+  "execution_mode": "sequential",
+  "approval_required": true,
+  "tasks": [
+    {
+      "task_id": "task-001-schemas",
+      "title": "Define JSON Schemas",
+      "description": "Create schemas for task, plan, config, and results",
+      "role": "developer",
+      "runtime": "antigravity",
+      "depends_on": [],
+      "allowed_paths": [
+        "contracts/"
+      ],
+      "protected_paths": [
+        ".claude/",
+        "RULES.md"
+      ],
+      "acceptance_criteria": [
+        "Schemas adhere to Draft-07",
+        "Fixtures validate cleanly"
+      ],
+      "verification_commands": [
+        "pytest kit/tests/test_contracts.py"
+      ],
+      "retry_limit": 1,
+      "timeout_seconds": 600
+    }
+  ]
+}

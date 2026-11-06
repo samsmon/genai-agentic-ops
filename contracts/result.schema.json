@@ -1,0 +1,194 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.genai-agentic-ops.org/result.schema.json",
+  "title": "TaskExecutionResult",
+  "description": "Normalized worker execution outcome, diff analysis, and independent verification record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "workflow_id",
+    "runtime",
+    "execution",
+    "diff",
+    "verification",
+    "approval"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^task-[a-zA-Z0-9_-]+$"
+    },
+    "workflow_id": {
+      "type": "string",
+      "pattern": "^wf-[a-zA-Z0-9_-]+$"
+    },
+    "runtime": {
+      "type": "string",
+      "minLength": 1
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exit_code",
+        "status",
+        "duration_ms",
+        "stdout_ref",
+        "stderr_ref",
+        "permission_denials"
+      ],
+      "properties": {
+        "exit_code": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "completed",
+            "failed",
+            "blocked",
+            "timed_out"
+          ]
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stdout_ref": {
+          "type": "string"
+        },
+        "stderr_ref": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "permission_denials": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "diff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "changed_files",
+        "staged_files",
+        "untracked_files",
+        "in_scope",
+        "violations"
+      ],
+      "properties": {
+        "changed_files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "staged_files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "untracked_files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "in_scope": {
+          "type": "boolean"
+        },
+        "violations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verified",
+        "commands_executed",
+        "all_passed"
+      ],
+      "properties": {
+        "verified": {
+          "type": "boolean"
+        },
+        "commands_executed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "all_passed": {
+          "type": "boolean"
+        },
+        "command_results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["command", "exit_code", "passed"],
+            "properties": {
+              "command": {
+                "type": "string"
+              },
+              "exit_code": {
+                "type": "integer"
+              },
+              "passed": {
+                "type": "boolean"
+              },
+              "output_snippet": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "status"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "granted",
+            "denied",
+            "not_required"
+          ]
+        },
+        "granted_by": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

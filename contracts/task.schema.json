@@ -1,0 +1,147 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.genai-agentic-ops.org/task.schema.json",
+  "title": "TaskDefinition",
+  "description": "Lifecycle state and specification of an individual orchestrated task",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "workflow_id",
+    "title",
+    "role",
+    "runtime",
+    "status",
+    "acceptance_criteria"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^task-[a-zA-Z0-9_-]+$"
+    },
+    "workflow_id": {
+      "type": "string",
+      "pattern": "^wf-[a-zA-Z0-9_-]+$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "planner",
+        "developer",
+        "tester",
+        "reviewer"
+      ]
+    },
+    "runtime": {
+      "type": "string",
+      "enum": [
+        "host",
+        "antigravity",
+        "claude-code",
+        "codex",
+        "gemini-cli",
+        "custom"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "ready",
+        "running",
+        "completed",
+        "verified",
+        "approved",
+        "blocked",
+        "failed",
+        "cancelled",
+        "needs_recovery"
+      ]
+    },
+    "depends_on": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^task-[a-zA-Z0-9_-]+$"
+      }
+    },
+    "allowed_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "protected_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "verification_commands": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "retry_limit": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "retry_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "timeout_seconds": {
+      "type": "integer",
+      "minimum": 10
+    },
+    "lock_held": {
+      "type": "boolean"
+    },
+    "assigned_worker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime", "pid", "hostname", "started_at"],
+      "properties": {
+        "runtime": {
+          "type": "string"
+        },
+        "pid": {
+          "type": "integer"
+        },
+        "hostname": {
+          "type": "string"
+        },
+        "started_at": {
+          "type": "string"
+        }
+      }
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    }
+  }
+}

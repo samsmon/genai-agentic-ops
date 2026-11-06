@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "agents": {
+    "bad_agent": {
+      "runtime": "unsupported-nonexistent-runtime",
+      "command": "bad_cmd",
+      "enabled": true,
+      "roles": [],
+      "maturity": "hallucinated-level",
+      "unknown_prop": true
+    }
+  }
+}

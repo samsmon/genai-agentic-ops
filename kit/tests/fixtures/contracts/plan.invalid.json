@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "workflow_id": "invalid_workflow_without_wf_prefix",
+  "title": "",
+  "planner": {
+    "id": "unknown",
+    "runtime": "invalid_runtime",
+    "attested": "not_a_boolean"
+  },
+  "execution_mode": "asynchronous_chaos",
+  "tasks": []
+}

@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "agents": {
+    "antigravity": {
+      "runtime": "antigravity",
+      "command": "agy",
+      "enabled": true,
+      "roles": [
+        "developer",
+        "tester"
+      ],
+      "maturity": "live-tested",
+      "capabilities": {
+        "streaming": true,
+        "resume": "unverified",
+        "interrupt": "process_group",
+        "permission_modes": [
+          "default",
+          "auto"
+        ],
+        "output_format": "json"
+      }
+    },
+    "claude": {
+      "runtime": "claude-code",
+      "command": "claude",
+      "enabled": true,
+      "roles": [
+        "planner",
+        "developer"
+      ],
+      "maturity": "fixture-tested",
+      "capabilities": {
+        "streaming": false,
+        "resume": "unverified",
+        "interrupt": "process_group",
+        "output_format": "json"
+      }
+    }
+  }
+}

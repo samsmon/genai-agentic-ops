@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "project": {
+    "name": "sample-project",
+    "description": "Demonstration project for genai-agentic-ops"
+  },
+  "orchestration": {
+    "planner": {
+      "strategy": "dynamic",
+      "default": "host",
+      "allow_override": true
+    },
+    "execution": {
+      "mode": "shared",
+      "parallel": false,
+      "max_workers": 1,
+      "timeout_seconds": 1800
+    },
+    "retry": {
+      "max_attempts": 1,
+      "fallback": "none"
+    },
+    "approval": {
+      "plan": "required",
+      "destructive_actions": "required",
+      "task_completion": "required",
+      "merge": "required"
+    }
+  },
+  "governance": {
+    "git_policy": "agent-commits",
+    "protect_user_changes": true,
+    "enforce_file_ownership": true,
+    "require_verification": true,
+    "protected_paths": [
+      ".git/",
+      ".claude/",
+      ".githooks/",
+      "RULES.md",
+      "AGENTS.md"
+    ],
+    "allowed_verification_commands": [
+      "pytest",
+      "npm test"
+    ],
+    "anti_monolith_limit": 500
+  },
+  "storage": {
+    "backend": "filesystem",
+    "path": ".agentic/state"
+  }
+}

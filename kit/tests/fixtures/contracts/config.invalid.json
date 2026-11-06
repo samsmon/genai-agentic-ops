@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "project": {
+    "name": "sample-project"
+  },
+  "orchestration": {
+    "planner": {
+      "strategy": "invalid_strategy_enum",
+      "default": "host",
+      "allow_override": true
+    },
+    "execution": {
+      "mode": "shared",
+      "parallel": false,
+      "max_workers": 1,
+      "timeout_seconds": -5
+    },
+    "approval": {
+      "plan": "required",
+      "destructive_actions": "required"
+    }
+  },
+  "governance": {
+    "git_policy": "arbitrary-unknown-policy",
+    "protect_user_changes": true,
+    "enforce_file_ownership": true,
+    "require_verification": true
+  },
+  "unauthorized_extra_field": "disallowed_by_additionalProperties_false"
+}

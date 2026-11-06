@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "task_id": "task-001-schemas",
+  "workflow_id": "wf-arch-bootstrap",
+  "runtime": "antigravity",
+  "execution": {
+    "exit_code": 0,
+    "status": "completed",
+    "duration_ms": 1420,
+    "stdout_ref": ".agentic/runs/run-001/stdout.log",
+    "stderr_ref": ".agentic/runs/run-001/stderr.log",
+    "session_id": "session-agy-001",
+    "permission_denials": []
+  },
+  "diff": {
+    "changed_files": [
+      "contracts/task.schema.json"
+    ],
+    "staged_files": [],
+    "untracked_files": [
+      "contracts/task.schema.json"
+    ],
+    "in_scope": true,
+    "violations": []
+  },
+  "verification": {
+    "verified": true,
+    "commands_executed": [
+      "pytest kit/tests/test_contracts.py"
+    ],
+    "all_passed": true,
+    "command_results": [
+      {
+        "command": "pytest kit/tests/test_contracts.py",
+        "exit_code": 0,
+        "passed": true,
+        "output_snippet": "All tests passed"
+      }
+    ]
+  },
+  "approval": {
+    "required": true,
+    "status": "granted",
+    "granted_by": "human_operator",
+    "timestamp": "2026-11-06T09:00:00Z"
+  }
+}

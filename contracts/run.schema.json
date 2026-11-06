@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.genai-agentic-ops.org/run.schema.json",
+  "title": "OrchestrationRunRecord",
+  "description": "Execution run snapshot, intent log, and audit record in .agentic/runs/",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "workflow_id",
+    "status",
+    "host",
+    "intent",
+    "workspace_baseline",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^run-[a-zA-Z0-9_-]+$"
+    },
+    "workflow_id": {
+      "type": "string",
+      "pattern": "^wf-[a-zA-Z0-9_-]+$"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "running",
+        "completed",
+        "failed",
+        "cancelled",
+        "blocked",
+        "needs_recovery"
+      ]
+    },
+    "host": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hostname",
+        "pid",
+        "process_start_time"
+      ],
+      "properties": {
+        "hostname": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pid": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "process_start_time": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target_state",
+        "action",
+        "timestamp"
+      ],
+      "properties": {
+        "target_state": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        }
+      }
+    },
+    "workspace_baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "git_commit",
+        "clean",
+        "snapshot_hash",
+        "timestamp"
+      ],
+      "properties": {
+        "git_commit": {
+          "type": "string"
+        },
+        "clean": {
+          "type": "boolean"
+        },
+        "snapshot_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "timestamp": {
+          "type": "string"
+        }
+      }
+    },
+    "active_task_id": {
+      "type": "string",
+      "pattern": "^task-[a-zA-Z0-9_-]+$"
+    },
+    "task_snapshots": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "created_at": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string"
+    },
+    "completed_at": {
+      "type": "string"
+    }
+  }
+}

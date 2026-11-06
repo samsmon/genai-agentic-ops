@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://schemas.genai-agentic-ops.org/handoff.schema.json",
+  "title": "TaskHandoffPackage",
+  "description": "Bounded, isolated context package provided to worker CLI",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "workflow_id",
+    "sender",
+    "recipient",
+    "objective",
+    "bounded_context",
+    "allowed_paths",
+    "protected_paths",
+    "acceptance_criteria"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^task-[a-zA-Z0-9_-]+$"
+    },
+    "workflow_id": {
+      "type": "string",
+      "pattern": "^wf-[a-zA-Z0-9_-]+$"
+    },
+    "sender": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime", "role"],
+      "properties": {
+        "runtime": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "recipient": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime", "role"],
+      "properties": {
+        "runtime": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1
+    },
+    "bounded_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_description"],
+      "properties": {
+        "task_description": {
+          "type": "string"
+        },
+        "relevant_files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "prior_decisions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "allowed_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "protected_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "verification_commands": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "timeout_seconds": {
+      "type": "integer",
+      "minimum": 10
+    }
+  }
+}

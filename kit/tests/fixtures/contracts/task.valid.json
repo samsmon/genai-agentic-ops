@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "task_id": "task-001-schemas",
+  "workflow_id": "wf-arch-bootstrap",
+  "title": "Define JSON Schemas",
+  "description": "Create schemas for task, plan, config, and results",
+  "role": "developer",
+  "runtime": "antigravity",
+  "status": "ready",
+  "depends_on": [],
+  "allowed_paths": [
+    "contracts/"
+  ],
+  "protected_paths": [
+    ".claude/",
+    "RULES.md"
+  ],
+  "acceptance_criteria": [
+    "Schemas adhere to Draft-07"
+  ],
+  "verification_commands": [
+    "pytest kit/tests/test_contracts.py"
+  ],
+  "retry_limit": 1,
+  "retry_count": 0,
+  "timeout_seconds": 600,
+  "lock_held": false
+}

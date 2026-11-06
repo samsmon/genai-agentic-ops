@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "task_id": "invalid_task",
+  "workflow_id": "bad_wf",
+  "runtime": "agy",
+  "execution": {
+    "exit_code": "should_be_integer",
+    "status": "in_progress",
+    "duration_ms": -10,
+    "stdout_ref": "",
+    "stderr_ref": "",
+    "permission_denials": []
+  }
+}

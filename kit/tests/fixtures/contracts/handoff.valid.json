@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "task_id": "task-001-schemas",
+  "workflow_id": "wf-arch-bootstrap",
+  "sender": {
+    "runtime": "host",
+    "role": "planner"
+  },
+  "recipient": {
+    "runtime": "antigravity",
+    "role": "developer"
+  },
+  "objective": "Author JSON schemas for core orchestration models",
+  "bounded_context": {
+    "task_description": "Implement schemas with strict additionalProperties",
+    "relevant_files": [
+      "docs/architecture/overview.md"
+    ],
+    "prior_decisions": [
+      "Use draft-07 compatible syntax"
+    ],
+    "constraints": [
+      "Files must not exceed 500 lines"
+    ]
+  },
+  "allowed_paths": [
+    "contracts/"
+  ],
+  "protected_paths": [
+    ".claude/",
+    "RULES.md"
+  ],
+  "acceptance_criteria": [
+    "Schemas pass draft-07 meta-validation"
+  ],
+  "verification_commands": [
+    "pytest kit/tests/test_contracts.py"
+  ],
+  "timeout_seconds": 600
+}
