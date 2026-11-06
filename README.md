@@ -5,7 +5,7 @@
 
 A reusable ruleset for running several AI coding agents in one repository without them stepping on each other, or on you.
 
-[![Version](https://img.shields.io/badge/version-v2.4.0-blue?style=flat-square)](#versions-and-pins)
+[![Version](https://img.shields.io/badge/version-v2.5.0-blue?style=flat-square)](#versions-and-pins)
 [![Rules](https://img.shields.io/badge/rules-AGENTS.md-informational?style=flat-square)](RULES.md)
 [![Kit](https://img.shields.io/badge/kit-Python%203%20%7C%20sh%20%7C%20PowerShell-4c566a?style=flat-square)](kit/README.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -19,7 +19,7 @@ A reusable ruleset for running several AI coding agents in one repository withou
 
 The core is plain text: a rules block that your agents read and follow, plus a small live task log. An optional kit of hooks and scripts enforces part of those rules mechanically. Works with Claude Code, Gemini/Antigravity, Codex, Cursor, OpenCode and Roo, at different levels of support (see [Tool support](#tool-support)).
 
-Status: v2.4.0 is the latest release (git tag and GitHub release). License: MIT.
+Status: v2.5.0 is the latest release (git tag and GitHub release). License: MIT.
 
 If you are an AI agent, go to [For AI agents](#for-ai-agents).
 
@@ -351,6 +351,10 @@ Limits to know about:
 | Path | Contents |
 |---|---|
 | [`RULES.md`](RULES.md) | Part A bootstrap, Part B rules block with git-policy and handoff snippets, Part C templates, Part D usage and v1 upgrade |
+| `contracts/` | JSON Schema contracts for agent registry, config, handoff, plan, result, run, task |
+| `orchestrator/` | Multi-agent coordination engine, runtime adapters, governance, and CLI |
+| `integrations/` | Host-native integrations and active lock guard hooks for Antigravity, Claude Code, Codex, and Gemini CLI |
+| `docs/architecture/` | Architecture overview, ADRs, state machine, and threat model |
 | [`kit/`](kit/README.md) | Optional hooks (Claude Code, Codex, Cursor, OpenCode and Antigravity adapters over one core), scripts in PowerShell and sh (including `agentic-sync` for hidden mode and the commit message checker), the installer, `doctor`, and tests |
 | [`kit/commit-format.md`](kit/commit-format.md) | Commit message rules |
 | [`kit/compat.md`](kit/compat.md) | Sources for the tool adapters, with access dates |
@@ -368,8 +372,9 @@ Always pin to a commit SHA. The rules block is the same across v2.x unless the c
 
 | Version | Commit SHA | Notes |
 |---|---|---|
-| v2.4.0 | `b6404a60c1d5f95c7ac152f88a08dc8315f4b2f3` | Current. Chief and worker rule, `worker-check`, English-only rule, non-interactive clause, LF line endings |
-| v2.3.2 | `32c29b658bf45e00ccf2a3c2915a2bdb48cc4499` | Previous. Use this or later with Antigravity |
+| v2.5.0 | tag `v2.5.0` | Current. Multi-agent host orchestrator, JSON schema contracts, active lock guard, governance pipeline, anti-monolith rules & skills suite |
+| v2.4.0 | `b6404a60c1d5f95c7ac152f88a08dc8315f4b2f3` | Previous. Chief and worker rule, `worker-check`, English-only rule, non-interactive clause, LF line endings |
+| v2.3.2 | `32c29b658bf45e00ccf2a3c2915a2bdb48cc4499` | Use this or later with Antigravity |
 | v2.3.1 | `8fcf69b0e9e97c698a489d133f523c6d99c83a0f` | Ships an Antigravity hook the IDE cannot run |
 | v2.3.0 | `bca34a37edd8725fa2875c0f831d583c5500f7c1` | Cannot finish a hidden-mode install on Windows; same Antigravity hook problem |
 | v2.2.0 | `bb594df1a2e18a143cc55e911872a0cb33cc8312` | Git policy rework, hidden mode |
