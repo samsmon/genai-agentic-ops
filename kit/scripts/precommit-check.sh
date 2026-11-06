@@ -46,7 +46,7 @@ for f in $files; do
         *)
           lines=$(wc -l < "$ROOT/$f" | tr -d ' ')
           if [ "$lines" -gt 500 ]; then
-            echo "COMMIT REJECTED: source file exceeds 500 lines: $f ($lines lines). Modularize into smaller components (<300 lines recommended). Override is the user's call: rerun with ALLOW_LARGE_SOURCE=1."
+            echo "COMMIT REJECTED: source file exceeds 500 lines: $f ($lines lines). Modularize into smaller components (<300 lines recommended) using the 'modular-code' skill. Override is the user's call: rerun with ALLOW_LARGE_SOURCE=1."
             [ "$ALLOW_LARGE_SOURCE" = 1 ] || rc=1
           fi
           ;;

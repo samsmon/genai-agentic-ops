@@ -179,9 +179,9 @@ OUT=$(ALLOW_BIG_FILES=1 sh "$SC/precommit-check.sh" --root "$PC" --staged-file "
 [ $CODE = 0 ] && has 'large file'; expect 'precommit: ALLOW_BIG_FILES=1 -> 0' $?
 pc_env; seq 501 | sed 's/.*/console.log("x");/' > "$PC/app.js"; g "$PC" add -A; echo app.js > "$BASE/staged.txt"
 OUT=$(sh "$SC/precommit-check.sh" --root "$PC" --staged-file "$BASE/staged.txt" 2>&1); CODE=$?
-[ $CODE = 1 ] && has 'exceeds 500 lines'; expect 'precommit: source file over 500 lines -> 1' $?
+[ $CODE = 1 ] && has 'exceeds 500 lines' && has 'modular-code'; expect 'precommit: source file over 500 lines -> 1' $?
 OUT=$(ALLOW_LARGE_SOURCE=1 sh "$SC/precommit-check.sh" --root "$PC" --staged-file "$BASE/staged.txt" 2>&1); CODE=$?
-[ $CODE = 0 ] && has 'exceeds 500 lines'; expect 'precommit: ALLOW_LARGE_SOURCE=1 -> 0' $?
+[ $CODE = 0 ] && has 'exceeds 500 lines' && has 'modular-code'; expect 'precommit: ALLOW_LARGE_SOURCE=1 -> 0' $?
 pc_env; seq 501 | sed 's/.*/console.log("x");/' > "$PC/bundle.min.js"; g "$PC" add -A; echo bundle.min.js > "$BASE/staged.txt"
 OUT=$(sh "$SC/precommit-check.sh" --root "$PC" --staged-file "$BASE/staged.txt" 2>&1); CODE=$?
 [ $CODE = 0 ]; expect 'precommit: minified source over 500 lines -> 0' $?

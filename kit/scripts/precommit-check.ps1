@@ -47,7 +47,7 @@ if ($files.Count -gt 0 -and (Test-Path -LiteralPath (Join-Path $Root '.git'))) {
     if ($f -match $sourceExt -and $f -notmatch $vendorOrMin) {
       $lines = [System.IO.File]::ReadAllLines($fp).Length
       if ($lines -gt $maxSourceLines) {
-        Write-Output "COMMIT REJECTED: source file exceeds $maxSourceLines lines: $f ($lines lines). Modularize into smaller components (<300 lines recommended). Override is the user's call: rerun with ALLOW_LARGE_SOURCE=1."
+        Write-Output "COMMIT REJECTED: source file exceeds $maxSourceLines lines: $f ($lines lines). Modularize into smaller components (<300 lines recommended) using the 'modular-code' skill. Override is the user's call: rerun with ALLOW_LARGE_SOURCE=1."
         if ($env:ALLOW_LARGE_SOURCE -ne '1') { $rc = 1 }
       }
     }
