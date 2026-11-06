@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.5.0 - 2026-11-07
+## v2.5.0 - 2026-11-07 (commit `ad7690a20ecb09eec27d0d7bd2d3f46ce11324e8`)
 - Architecture Foundation & JSON Schema Contracts (Milestone 0): Implemented canonical JSON Schema contracts under `contracts/` for agent registry, config, handoff, plan, result, run, and task. Added foundational architecture documentation under `docs/architecture/` including system overview, state machine definitions, threat model, and architectural decision records (ADR-001 through ADR-008).
 - Orchestrator Core & Unified CLI (Milestones 1 & 2): Multi-agent coordination engine under `orchestrator/` featuring coordinator, deterministic state machine, task manager, workflow engine, advisory lock manager, runtime adapters (Claude Code, Codex, Gemini CLI, Antigravity), and a unified CLI envelope (`agentic`).
 - Task Runner & Multi-Host Integrations (Milestones 3 & 5): Execution engine with `TaskRunner` supporting DAG-based task dependency resolution, automatic advisory lock acquisition, diff verification, and timeout enforcement. Integrated host-native `active_lock_guard` hooks for Claude Code, Codex, Gemini CLI, and Antigravity, backed by 91 passing unit tests.

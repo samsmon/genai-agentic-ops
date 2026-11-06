@@ -88,7 +88,7 @@ Both prompts act on the project your agent session is running in, not on this re
 **Install** (the project has no genai-agentic-ops yet):
 
 ```
-Read https://raw.githubusercontent.com/samsmon/genai-agentic-ops/b6404a60c1d5f95c7ac152f88a08dc8315f4b2f3/RULES.md and run Part A (Bootstrap) for this project.
+Read https://raw.githubusercontent.com/samsmon/genai-agentic-ops/ad7690a20ecb09eec27d0d7bd2d3f46ce11324e8/RULES.md and run Part A (Bootstrap) for this project.
 Analyze first and show me the plan; write nothing until I approve.
 ```
 
@@ -372,7 +372,7 @@ Always pin to a commit SHA. The rules block is the same across v2.x unless the c
 
 | Version | Commit SHA | Notes |
 |---|---|---|
-| v2.5.0 | tag `v2.5.0` | Current. Multi-agent host orchestrator, JSON schema contracts, active lock guard, governance pipeline, anti-monolith rules & skills suite |
+| v2.5.0 | `ad7690a20ecb09eec27d0d7bd2d3f46ce11324e8` | Current. Multi-agent host orchestrator, JSON schema contracts, active lock guard, governance pipeline, anti-monolith rules & skills suite |
 | v2.4.0 | `b6404a60c1d5f95c7ac152f88a08dc8315f4b2f3` | Previous. Chief and worker rule, `worker-check`, English-only rule, non-interactive clause, LF line endings |
 | v2.3.2 | `32c29b658bf45e00ccf2a3c2915a2bdb48cc4499` | Use this or later with Antigravity |
 | v2.3.1 | `8fcf69b0e9e97c698a489d133f523c6d99c83a0f` | Ships an Antigravity hook the IDE cannot run |
