@@ -1,0 +1,7 @@
+{
+  "result": "Execution stopped: permission denied to edit protected file.",
+  "session_id": "claude-sess-test-002",
+  "permission_denials": [
+    "Edit(docs/CURRENT_OPS.md) denied by user"
+  ]
+}

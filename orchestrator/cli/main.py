@@ -5,6 +5,8 @@ Implements CLI commands:
 - agentic plan submit <plan-file>
 - agentic task list [--workflow-id <id>] [--status <status>]
 - agentic task show <task-id>
+- agentic agent list
+- agentic agent inspect <agent-name>
 - agentic status [--workflow-id <id>]
 - agentic doctor
 """
@@ -82,6 +84,26 @@ def handle_task_show(args: argparse.Namespace, coord: OrchestratorCoordinator) -
             exit_code=EXIT_ERROR,
         )
     emit_envelope(ok=True, data=task, exit_code=EXIT_OK)
+
+
+def handle_agent_list(args: argparse.Namespace, coord: OrchestratorCoordinator) -> None:
+    agents = coord.registry.list_agents()
+    emit_envelope(
+        ok=True,
+        data={"count": len(agents), "agents": agents},
+        exit_code=EXIT_OK,
+    )
+
+
+def handle_agent_inspect(args: argparse.Namespace, coord: OrchestratorCoordinator) -> None:
+    agent = coord.registry.inspect_agent(args.agent_name)
+    if not agent:
+        emit_envelope(
+            ok=False,
+            error={"code": "AGENT_NOT_FOUND", "message": f"Agent '{args.agent_name}' not found"},
+            exit_code=EXIT_ERROR,
+        )
+    emit_envelope(ok=True, data=agent, exit_code=EXIT_OK)
 
 
 def handle_status(args: argparse.Namespace, coord: OrchestratorCoordinator) -> None:
@@ -179,6 +201,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_tshow = task_subs.add_parser("show", help="Show task definition and status")
     p_tshow.add_argument("task_id", help="Task ID")
 
+    # agent list / inspect
+    p_agent = subparsers.add_parser("agent", help="Agent runtime adapters and registry")
+    agent_subs = p_agent.add_subparsers(dest="agent_action", required=True)
+    agent_subs.add_parser("list", help="List registered runtime agents")
+    p_ainspect = agent_subs.add_parser("inspect", help="Inspect agent capabilities and maturity")
+    p_ainspect.add_argument("agent_name", help="Registered agent name (e.g. claude-code, antigravity)")
+
     # status
     p_stat = subparsers.add_parser("status", help="Show orchestrator and workflow status")
     p_stat.add_argument("--workflow-id", help="Workflow ID")
@@ -206,6 +235,11 @@ def main(argv: list[str] | None = None) -> None:
             handle_task_list(args, coordinator)
         elif args.task_action == "show":
             handle_task_show(args, coordinator)
+    elif args.subcommand == "agent":
+        if args.agent_action == "list":
+            handle_agent_list(args, coordinator)
+        elif args.agent_action == "inspect":
+            handle_agent_inspect(args, coordinator)
     elif args.subcommand == "status":
         handle_status(args, coordinator)
     elif args.subcommand == "doctor":

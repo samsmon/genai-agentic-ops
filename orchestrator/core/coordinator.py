@@ -26,6 +26,7 @@ from orchestrator.governance.lock import LockManager
 from orchestrator.governance.process_info import get_host_tuple, is_process_alive
 from orchestrator.governance.scope_check import ScopeChecker
 from orchestrator.planner.validator import PlanValidator
+from orchestrator.registry.agents import AgentRegistry
 from orchestrator.storage.filesystem import FileSystemStorage
 
 
@@ -39,6 +40,7 @@ class OrchestratorCoordinator:
         self.scope_checker = ScopeChecker(self.root_dir)
         self.task_manager = TaskManager(self.storage)
         self.validator = PlanValidator()
+        self.registry = AgentRegistry()
 
     def submit_plan(self, plan_data_or_file: dict[str, Any] | str | Path) -> dict[str, Any]:
         """Validate and submit an execution plan, registering tasks and resolving ready items."""
