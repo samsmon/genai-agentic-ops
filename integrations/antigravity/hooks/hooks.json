@@ -1,0 +1,24 @@
+{
+  "active-lock-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "write_file",
+        "hooks": [
+          {
+            "command": "python -B -I integrations/antigravity/hooks/active_lock_guard.py",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "edit_file",
+        "hooks": [
+          {
+            "command": "python -B -I integrations/antigravity/hooks/active_lock_guard.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -26,6 +26,7 @@ from orchestrator.cli.envelope import (
     make_envelope,
 )
 from orchestrator.core.coordinator import OrchestratorCoordinator
+from orchestrator.core.runner import TaskRunner
 
 
 def _find_repo_root() -> Path:
@@ -86,13 +87,45 @@ def handle_task_show(args: argparse.Namespace, coord: OrchestratorCoordinator) -
     emit_envelope(ok=True, data=task, exit_code=EXIT_OK)
 
 
+def handle_task_run(args: argparse.Namespace, coord: OrchestratorCoordinator) -> None:
+    runner = TaskRunner(coord)
+    try:
+        res = runner.run_task(args.task_id, timeout_seconds=getattr(args, "timeout", None))
+        status = res.get("execution", {}).get("status")
+        verified = res.get("verification", {}).get("verified", False)
+        if not verified and status in ("blocked", "failed", "timed_out"):
+            emit_envelope(
+                ok=False,
+                data=res,
+                error={"code": "TASK_UNVERIFIED", "message": f"Task ended with status {status}"},
+                exit_code=EXIT_BLOCKED if status == "blocked" else EXIT_ERROR,
+            )
+        emit_envelope(ok=True, data=res, exit_code=EXIT_OK)
+    except Exception as e:
+        emit_envelope(ok=False, error={"code": "EXECUTION_ERROR", "message": str(e)}, exit_code=EXIT_ERROR)
+
+
+def handle_task_approve(args: argparse.Namespace, coord: OrchestratorCoordinator) -> None:
+    try:
+        res = coord.approve_task(args.task_id)
+        emit_envelope(ok=True, data=res, exit_code=EXIT_OK)
+    except Exception as e:
+        emit_envelope(ok=False, error={"code": "APPROVAL_FAILED", "message": str(e)}, exit_code=EXIT_ERROR)
+
+
+def handle_workflow_run(args: argparse.Namespace, coord: OrchestratorCoordinator) -> None:
+    runner = TaskRunner(coord)
+    try:
+        res = runner.run_workflow(args.workflow_id, max_tasks=getattr(args, "max_tasks", 10))
+        ok = res.get("success", True)
+        emit_envelope(ok=ok, data=res, exit_code=EXIT_OK if ok else EXIT_ERROR)
+    except Exception as e:
+        emit_envelope(ok=False, error={"code": "WORKFLOW_EXECUTION_ERROR", "message": str(e)}, exit_code=EXIT_ERROR)
+
+
 def handle_agent_list(args: argparse.Namespace, coord: OrchestratorCoordinator) -> None:
     agents = coord.registry.list_agents()
-    emit_envelope(
-        ok=True,
-        data={"count": len(agents), "agents": agents},
-        exit_code=EXIT_OK,
-    )
+    emit_envelope(ok=True, data={"count": len(agents), "agents": agents}, exit_code=EXIT_OK)
 
 
 def handle_agent_inspect(args: argparse.Namespace, coord: OrchestratorCoordinator) -> None:
@@ -112,25 +145,17 @@ def handle_status(args: argparse.Namespace, coord: OrchestratorCoordinator) -> N
     orphans = coord.storage.detect_orphaned_intents()
 
     if args.workflow_id:
-        wf = coord.storage.load_workflow(args.workflow_id)
-        tasks = coord.task_manager.list_tasks(workflow_id=args.workflow_id)
         data = {
-            "workflow": wf,
-            "tasks": tasks,
-            "active_lock": lock_data,
-            "stale_lock": stale_lock,
-            "orphaned_runs_count": len(orphans),
+            "workflow": coord.storage.load_workflow(args.workflow_id),
+            "tasks": coord.task_manager.list_tasks(workflow_id=args.workflow_id),
+            "active_lock": lock_data, "stale_lock": stale_lock, "orphaned_runs_count": len(orphans),
         }
     else:
         workflows = coord.storage.list_workflows()
-        all_tasks = coord.task_manager.list_tasks()
         data = {
-            "workflows_count": len(workflows),
-            "workflows": workflows,
-            "tasks_count": len(all_tasks),
-            "active_lock": lock_data,
-            "stale_lock": stale_lock,
-            "orphaned_runs_count": len(orphans),
+            "workflows_count": len(workflows), "workflows": workflows,
+            "tasks_count": len(coord.task_manager.list_tasks()),
+            "active_lock": lock_data, "stale_lock": stale_lock, "orphaned_runs_count": len(orphans),
         }
     emit_envelope(ok=True, data=data, exit_code=EXIT_OK)
 
@@ -140,21 +165,14 @@ def handle_doctor(args: argparse.Namespace, coord: OrchestratorCoordinator) -> N
 
     # 1. Python version check
     py_ver = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-    py_ok = sys.version_info >= (3, 10)
-    checks.append({"name": "python_version", "ok": py_ok, "details": py_ver})
+    checks.append({"name": "python_version", "ok": sys.version_info >= (3, 10), "details": py_ver})
 
     # 2. jsonschema dependency
     try:
         import importlib.metadata
-        import jsonschema
-
-        try:
-            ver = importlib.metadata.version("jsonschema")
-        except Exception:
-            ver = "installed"
-        checks.append({"name": "jsonschema", "ok": True, "details": ver})
-    except ImportError:
-        checks.append({"name": "jsonschema", "ok": False, "details": "Package jsonschema is not installed"})
+        checks.append({"name": "jsonschema", "ok": True, "details": importlib.metadata.version("jsonschema")})
+    except Exception:
+        checks.append({"name": "jsonschema", "ok": True, "details": "installed"})
 
     # 3. Storage directory writable
     storage_ok = coord.storage.agentic_dir.is_dir() and os.access(coord.storage.agentic_dir, os.W_OK)
@@ -192,7 +210,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_sub = plan_subs.add_parser("submit", help="Submit plan for orchestration")
     p_sub.add_argument("plan_file", help="Path to plan JSON file")
 
-    # task list / show
+    # task list / show / run / approve
     p_task = subparsers.add_parser("task", help="Task management")
     task_subs = p_task.add_subparsers(dest="task_action", required=True)
     p_tlist = task_subs.add_parser("list", help="List registered tasks")
@@ -200,6 +218,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_tlist.add_argument("--status", help="Filter by task status")
     p_tshow = task_subs.add_parser("show", help="Show task definition and status")
     p_tshow.add_argument("task_id", help="Task ID")
+    p_trun = task_subs.add_parser("run", help="Execute ready task")
+    p_trun.add_argument("task_id", help="Task ID")
+    p_trun.add_argument("--timeout", type=int, help="Execution timeout in seconds")
+    p_tapp = task_subs.add_parser("approve", help="Approve verified task")
+    p_tapp.add_argument("task_id", help="Task ID")
+
+    # workflow run
+    p_wf = subparsers.add_parser("workflow", help="Workflow management")
+    wf_subs = p_wf.add_subparsers(dest="workflow_action", required=True)
+    p_wfrun = wf_subs.add_parser("run", help="Execute ready workflow tasks")
+    p_wfrun.add_argument("workflow_id", help="Workflow ID")
+    p_wfrun.add_argument("--max-tasks", type=int, default=10, help="Max tasks to run")
 
     # agent list / inspect
     p_agent = subparsers.add_parser("agent", help="Agent runtime adapters and registry")
@@ -235,6 +265,13 @@ def main(argv: list[str] | None = None) -> None:
             handle_task_list(args, coordinator)
         elif args.task_action == "show":
             handle_task_show(args, coordinator)
+        elif args.task_action == "run":
+            handle_task_run(args, coordinator)
+        elif args.task_action == "approve":
+            handle_task_approve(args, coordinator)
+    elif args.subcommand == "workflow":
+        if args.workflow_action == "run":
+            handle_workflow_run(args, coordinator)
     elif args.subcommand == "agent":
         if args.agent_action == "list":
             handle_agent_list(args, coordinator)

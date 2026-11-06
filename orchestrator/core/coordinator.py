@@ -123,7 +123,11 @@ class OrchestratorCoordinator:
         now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
         # 1. Acquire advisory lock
-        self.lock_manager.acquire(task_id=task_id, workflow_id=wf_id)
+        self.lock_manager.acquire(
+            task_id=task_id,
+            workflow_id=wf_id,
+            allowed_paths=task.get("allowed_paths", []),
+        )
 
         # 2. Baseline snapshot
         baseline = self.scope_checker.capture_snapshot()

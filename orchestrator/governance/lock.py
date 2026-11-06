@@ -38,12 +38,14 @@ class LockManager:
         self.locks_dir = Path(locks_dir).resolve()
         self.locks_dir.mkdir(parents=True, exist_ok=True)
         self.lock_file = self.locks_dir / "lock.json"
+        self.active_file = self.locks_dir / "active.json"
 
     def acquire(
         self,
         task_id: str,
         workflow_id: str,
         ttl_seconds: int = DEFAULT_LOCK_TTL_SECONDS,
+        allowed_paths: list[str] | None = None,
     ) -> dict[str, Any]:
         """Attempt to acquire the advisory lock atomically.
 
@@ -58,6 +60,7 @@ class LockManager:
             "lock_id": lock_id,
             "task_id": task_id,
             "workflow_id": workflow_id,
+            "allowed_paths": allowed_paths or [],
             "host": host_info,
             "acquired_at": now,
             "ttl_seconds": ttl_seconds,
@@ -82,6 +85,8 @@ class LockManager:
         try:
             content = json.dumps(lock_data, indent=2).encode("utf-8")
             os.write(fd, content)
+            with open(self.active_file, "wb") as f_act:
+                f_act.write(content)
         finally:
             os.close(fd)
 
@@ -97,12 +102,22 @@ class LockManager:
         except (OSError, json.JSONDecodeError):
             return None
 
+    def read_active(self) -> dict[str, Any] | None:
+        """Read and parse active lock file if present."""
+        if not self.active_file.is_file():
+            return None
+        try:
+            with open(self.active_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, json.JSONDecodeError):
+            return None
+
     def release(self, force: bool = False) -> None:
         """Release the advisory lock.
 
         If force is False, validates that the current process owns the lock.
         """
-        if not self.lock_file.exists():
+        if not self.lock_file.exists() and not self.active_file.exists():
             return
 
         lock_data = self.read_lock()
@@ -121,6 +136,7 @@ class LockManager:
 
         try:
             self.lock_file.unlink(missing_ok=True)
+            self.active_file.unlink(missing_ok=True)
         except OSError as e:
             raise LockReleaseError(f"Failed to remove lock file: {e}") from e
 
