@@ -23,6 +23,39 @@ IGNORED_DIRECTORIES: tuple[str, ...] = (
     ".pytest_cache",
 )
 
+SOURCE_EXTENSIONS: tuple[str, ...] = (
+    ".html",
+    ".htm",
+    ".css",
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".vue",
+    ".svelte",
+    ".py",
+    ".go",
+    ".rs",
+    ".php",
+    ".rb",
+    ".java",
+    ".c",
+    ".cpp",
+    ".h",
+    ".cs",
+)
+
+VENDOR_OR_MIN_PATTERNS: tuple[str, ...] = (
+    ".min.",
+    ".bundle.",
+    "vendor/",
+    "vendor\\",
+    "node_modules/",
+    "node_modules\\",
+)
+
+MAX_SOURCE_LINES: int = 500
+
 
 def hash_file(file_path: Path) -> str:
     """Calculate SHA256 hex digest of a file in binary mode."""
@@ -48,6 +81,8 @@ class ScopeChecker:
         if any(ignored in parts for ignored in IGNORED_DIRECTORIES):
             return True
         if ".tmp." in rel_path or rel_path.endswith(".pyc"):
+            return True
+        if rel_path in ("docs/CURRENT_OPS.md", "docs/CURRENT_OPS-archive.md"):
             return True
         return False
 
@@ -162,6 +197,24 @@ class ScopeChecker:
                 violations.append(
                     f"Out-of-scope path modified: '{mod_path}' not in allowed_paths"
                 )
+                continue
+
+            # 3. Anti-monolith verification: check if source file exceeds line limit
+            norm_mod = mod_path.replace("\\", "/").lower()
+            if any(norm_mod.endswith(ext) for ext in SOURCE_EXTENSIONS):
+                if not any(v in norm_mod for v in VENDOR_OR_MIN_PATTERNS):
+                    full_p = self.root_dir / mod_path
+                    if full_p.is_file():
+                        try:
+                            with open(full_p, "r", encoding="utf-8", errors="replace") as f:
+                                line_count = sum(1 for _ in f)
+                            if line_count > MAX_SOURCE_LINES:
+                                violations.append(
+                                    f"Anti-monolith violation: source file '{mod_path}' exceeds "
+                                    f"{MAX_SOURCE_LINES} lines ({line_count} lines). Modularize into smaller components (<300 lines recommended)."
+                                )
+                        except OSError:
+                            pass
 
         in_scope = len(violations) == 0
 

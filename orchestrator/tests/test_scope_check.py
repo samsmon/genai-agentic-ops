@@ -111,6 +111,28 @@ class TestScopeCheck(unittest.TestCase):
         self.assertFalse(res["in_scope"])
         self.assertTrue(any("Protected path modified" in v for v in res["violations"]))
 
+    def test_anti_monolith_violation_blocks_scope(self) -> None:
+        baseline = self.checker.capture_snapshot()
+        # Create a Python source file exceeding 500 lines
+        big_code = "\n".join([f"x_{i} = {i}" for i in range(550)])
+        (self.root / "src" / "monolith.py").write_text(big_code, encoding="utf-8")
+
+        diff = self.checker.compute_diff(baseline)
+        res = self.checker.verify_scope(diff, allowed_paths=["src/"])
+        self.assertFalse(res["in_scope"])
+        self.assertTrue(any("Anti-monolith violation" in v for v in res["violations"]))
+        self.assertTrue(any("exceeds 500 lines" in v for v in res["violations"]))
+
+    def test_anti_monolith_under_limit_passes(self) -> None:
+        baseline = self.checker.capture_snapshot()
+        clean_code = "\n".join([f"y_{i} = {i}" for i in range(150)])
+        (self.root / "src" / "clean.py").write_text(clean_code, encoding="utf-8")
+
+        diff = self.checker.compute_diff(baseline)
+        res = self.checker.verify_scope(diff, allowed_paths=["src/"])
+        self.assertTrue(res["in_scope"])
+        self.assertEqual(len(res["violations"]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

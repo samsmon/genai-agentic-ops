@@ -18,6 +18,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from orchestrator.cli.approval_cmd import (
+    handle_approval_deny,
+    handle_approval_grant,
+    handle_approval_show,
+    register_approval_subparser,
+)
+from orchestrator.cli.audit_cmd import handle_audit_show, register_audit_subparser
 from orchestrator.cli.envelope import (
     EXIT_BLOCKED,
     EXIT_ERROR,
@@ -242,6 +249,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_stat = subparsers.add_parser("status", help="Show orchestrator and workflow status")
     p_stat.add_argument("--workflow-id", help="Workflow ID")
 
+    # approval show / grant / deny
+    register_approval_subparser(subparsers)
+
+    # audit show
+    register_audit_subparser(subparsers)
+
     # doctor
     subparsers.add_parser("doctor", help="Inspect orchestrator health and environment")
 
@@ -279,6 +292,16 @@ def main(argv: list[str] | None = None) -> None:
             handle_agent_inspect(args, coordinator)
     elif args.subcommand == "status":
         handle_status(args, coordinator)
+    elif args.subcommand == "approval":
+        if args.approval_action == "show":
+            handle_approval_show(args, coordinator)
+        elif args.approval_action == "grant":
+            handle_approval_grant(args, coordinator)
+        elif args.approval_action == "deny":
+            handle_approval_deny(args, coordinator)
+    elif args.subcommand == "audit":
+        if args.audit_action == "show":
+            handle_audit_show(args, coordinator)
     elif args.subcommand == "doctor":
         handle_doctor(args, coordinator)
 

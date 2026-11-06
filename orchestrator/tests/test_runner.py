@@ -232,6 +232,78 @@ class TestRunner(unittest.TestCase):
         t2_loaded = self.coord.task_manager.get_task("task-002")
         self.assertEqual(t2_loaded["status"], TaskState.VERIFIED.value)
 
+    def test_destructive_verification_command_blocked_by_policy(self) -> None:
+        p = copy.deepcopy(self.plan)
+        p["approval_required"] = False
+        t_spec = p["tasks"][0]
+        t_spec["allowed_paths"] = ["src/"]
+        # Verification command contains a destructive action that PolicyBridge must block
+        t_spec["verification_commands"] = ["git push --force origin main"]
+
+        self.coord.submit_plan(p)
+        t_id = t_spec["task_id"]
+        res = self.runner.run_task(t_id)
+
+        self.assertFalse(res["verification"]["verified"])
+        self.assertFalse(res["verification"]["all_passed"])
+        cr = res["verification"]["command_results"][0]
+        self.assertIn("Destructive verification command blocked", cr["output_snippet"])
+        task = self.coord.task_manager.get_task(t_id)
+        self.assertEqual(task["status"], TaskState.BLOCKED.value)
+
+    def test_anti_monolith_violation_in_worker_diff_blocks_task(self) -> None:
+        p = copy.deepcopy(self.plan)
+        p["approval_required"] = False
+        t_spec = p["tasks"][0]
+        t_spec["allowed_paths"] = ["src/"]
+        t_spec["verification_commands"] = [f'"{sys.executable}" -c "exit(0)"']
+
+        def bloated_worker_effect(task: dict[str, Any], handoff: dict[str, Any]) -> None:
+            src_dir = self.root / "src"
+            src_dir.mkdir(parents=True, exist_ok=True)
+            big_code = "\n".join([f"# line {i}" for i in range(520)])
+            (src_dir / "bloated.py").write_text(big_code, encoding="utf-8")
+
+        self.mock_adapter.side_effect = bloated_worker_effect
+        self.coord.submit_plan(p)
+        t_id = t_spec["task_id"]
+        res = self.runner.run_task(t_id)
+
+        self.assertFalse(res["diff"]["in_scope"])
+        self.assertTrue(any("Anti-monolith violation" in v for v in res["diff"]["violations"]))
+        task = self.coord.task_manager.get_task(t_id)
+        self.assertEqual(task["status"], TaskState.BLOCKED.value)
+
+    def test_approval_gate_with_one_time_token(self) -> None:
+        p = copy.deepcopy(self.plan)
+        p["approval_required"] = True  # requires human approval
+        t_spec = p["tasks"][0]
+        t_spec["allowed_paths"] = ["src/"]
+        t_spec["verification_commands"] = [f'"{sys.executable}" -c "exit(0)"']
+
+        self.coord.submit_plan(p)
+        t_id = t_spec["task_id"]
+        res = self.runner.run_task(t_id)
+
+        self.assertTrue(res["verification"]["verified"])
+        self.assertTrue(res["approval"]["required"])
+        self.assertEqual(res["approval"]["status"], "pending")
+
+        # Approval token was generated in .agentic/approvals/<t_id>.json
+        appr_req = self.coord.approval_manager.get_approval(t_id)
+        self.assertIsNotNone(appr_req)
+        self.assertEqual(appr_req["status"], "pending")
+        token = appr_req["token"]
+
+        # Grant approval using ApprovalManager
+        appr_res = self.coord.approval_manager.grant_approval(t_id, token, approver="alice")
+        self.assertEqual(appr_res["status"], "granted")
+
+        # Task transitions to APPROVED
+        self.coord.approve_task(t_id, token=token, approver="alice")
+        task = self.coord.task_manager.get_task(t_id)
+        self.assertEqual(task["status"], TaskState.APPROVED.value)
+
 
 if __name__ == "__main__":
     unittest.main()

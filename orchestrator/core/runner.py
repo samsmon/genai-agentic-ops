@@ -11,6 +11,7 @@ Implements M3 execution orchestration:
 """
 from __future__ import annotations
 
+import datetime
 import sys
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,7 @@ from orchestrator.adapters.process_runner import ProcessRunner
 from orchestrator.core.coordinator import OrchestratorCoordinator
 from orchestrator.core.state_machine import ActorRole, TaskState
 from orchestrator.core.workflow_engine import WorkflowEngine
+from orchestrator.governance.process_info import get_host_tuple
 
 
 class TaskRunner:
@@ -113,9 +115,23 @@ class TaskRunner:
             self.coord.task_manager.update_task_status(
                 task_id, TaskState.COMPLETED, ActorRole.WORKER
             )
+            self.coord.audit_logger.log_event(
+                "worker_completed",
+                task_id=task_id,
+                workflow_id=task["workflow_id"],
+                run_id=run_id,
+                details={"exit_code": 0, "status": exec_res.status},
+            )
         else:
             self.coord.task_manager.update_task_status(
                 task_id, TaskState.FAILED, ActorRole.WORKER
+            )
+            self.coord.audit_logger.log_event(
+                "failed",
+                task_id=task_id,
+                workflow_id=task["workflow_id"],
+                run_id=run_id,
+                details={"exit_code": exec_res.exit_code, "status": exec_res.status},
             )
 
         # 4. Post-run diff verification (snapshot captured prior to verification commands)
@@ -125,14 +141,46 @@ class TaskRunner:
             allowed_paths=task.get("allowed_paths", []),
             protected_paths=task.get("protected_paths", []),
         )
+        if scope_res.get("in_scope", False):
+            self.coord.audit_logger.log_event(
+                "scope_verified",
+                task_id=task_id,
+                workflow_id=task["workflow_id"],
+                run_id=run_id,
+                details={"in_scope": True},
+            )
+        else:
+            self.coord.audit_logger.log_event(
+                "blocked",
+                task_id=task_id,
+                workflow_id=task["workflow_id"],
+                run_id=run_id,
+                details={
+                    "reason": "scope_or_monolith_violation",
+                    "violations": scope_res.get("violations", []),
+                },
+            )
 
-        # 5. Verification commands execution
+        # 5. Verification commands execution with Policy Bridge validation
         command_results: list[dict[str, Any]] = []
         all_passed = True
 
         if exec_res.exit_code == 0 and exec_res.status != "blocked" and scope_res.get("in_scope", False):
             ver_commands = task.get("verification_commands") or []
             for cmd in ver_commands:
+                # Validate command through PolicyBridge first
+                is_valid, policy_msg = self.coord.policy_bridge.validate_verification_command(cmd)
+                cmd_repr = cmd if isinstance(cmd, str) else " ".join(cmd)
+                if not is_valid:
+                    all_passed = False
+                    command_results.append({
+                        "command": cmd_repr,
+                        "exit_code": 1,
+                        "passed": False,
+                        "output_snippet": policy_msg,
+                    })
+                    break
+
                 cmd_list = self._format_command(cmd)
                 v_res = self.runner.run(
                     command=cmd_list,
@@ -142,7 +190,7 @@ class TaskRunner:
                 passed = (v_res.exit_code == 0)
                 snippet = (v_res.stdout + "\n" + v_res.stderr).strip()[:500]
                 command_results.append({
-                    "command": cmd,
+                    "command": cmd_repr,
                     "exit_code": v_res.exit_code,
                     "passed": passed,
                     "output_snippet": snippet or ("Passed" if passed else "Failed"),
@@ -150,6 +198,23 @@ class TaskRunner:
                 if not passed:
                     all_passed = False
                     break
+
+            if all_passed and ver_commands:
+                self.coord.audit_logger.log_event(
+                    "verification_passed",
+                    task_id=task_id,
+                    workflow_id=task["workflow_id"],
+                    run_id=run_id,
+                    details={"commands": [cr["command"] for cr in command_results]},
+                )
+            elif not all_passed:
+                self.coord.audit_logger.log_event(
+                    "blocked",
+                    task_id=task_id,
+                    workflow_id=task["workflow_id"],
+                    run_id=run_id,
+                    details={"reason": "verification_failed"},
+                )
         else:
             all_passed = False
 
@@ -170,8 +235,29 @@ class TaskRunner:
 
         # 7. Release advisory lock
         self.coord.lock_manager.release(force=True)
+        self.coord.audit_logger.log_event(
+            "lock_released",
+            task_id=task_id,
+            workflow_id=task["workflow_id"],
+            run_id=run_id,
+        )
 
-        # 8. Result record conforming to contracts/result.schema.json
+        # 8. Human approval handling
+        needs_approval = task.get("approval_required", True)
+        if final_status == TaskState.VERIFIED.value and needs_approval:
+            self.coord.approval_manager.request_approval(
+                task_id,
+                context={
+                    "workflow_id": task["workflow_id"],
+                    "diff": scope_res,
+                    "verification_passed": all_passed,
+                },
+            )
+            approval_record = {"required": True, "status": "pending"}
+        else:
+            approval_record = {"required": False, "status": "not_required"}
+
+        # 9. Result record conforming to contracts/result.schema.json
         result_record = {
             "schema_version": "1.0",
             "task_id": task_id,
@@ -199,14 +285,47 @@ class TaskRunner:
                 "all_passed": all_passed if command_results else (exec_res.exit_code == 0 and scope_res.get("in_scope", False)),
                 "command_results": command_results,
             },
-            "approval": {
-                "required": True,
-                "status": "pending",
-            },
+            "approval": approval_record,
         }
 
         self.coord.storage.write_result(run_id, result_record)
+
+        # 10. Run summary record conforming to contracts/run.schema.json
+        run_status = (
+            "completed"
+            if final_status in (TaskState.VERIFIED.value, TaskState.COMPLETED.value)
+            else ("blocked" if final_status == TaskState.BLOCKED.value else "failed")
+        )
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        intent_info = prep.get("intent_record", {})
+        run_summary = {
+            "schema_version": "1.0",
+            "run_id": run_id,
+            "workflow_id": task["workflow_id"],
+            "status": run_status,
+            "host": intent_info.get("host") or get_host_tuple(),
+            "intent": intent_info.get("intent") or {
+                "target_state": run_status,
+                "action": "execute_task",
+                "timestamp": now_iso,
+            },
+            "workspace_baseline": {
+                "git_commit": "untracked",
+                "clean": True,
+                "snapshot_hash": baseline["snapshot_hash"],
+                "timestamp": prep.get("created_at", now_iso),
+            },
+            "active_task_id": task_id,
+            "created_at": prep.get("created_at", now_iso),
+            "updated_at": now_iso,
+            "completed_at": now_iso,
+        }
+        self.coord.audit_logger.record_run_summary(run_summary)
+
+        # 11. Refresh workflow status and update CURRENT_OPS.md projection
         self.coord._refresh_workflow_status(task["workflow_id"])
+        self.coord.projector.project(self.coord.task_manager.list_tasks())
+
         return result_record
 
     def run_workflow(

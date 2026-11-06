@@ -22,8 +22,12 @@ from orchestrator.core.state_machine import (
 )
 from orchestrator.core.task_manager import TaskManager
 from orchestrator.core.workflow_engine import WorkflowEngine
+from orchestrator.governance.approval import ApprovalManager
+from orchestrator.governance.audit import AuditLogger
 from orchestrator.governance.lock import LockManager
+from orchestrator.governance.policy_bridge import PolicyBridge
 from orchestrator.governance.process_info import get_host_tuple, is_process_alive
+from orchestrator.governance.projection import CurrentOpsProjector
 from orchestrator.governance.scope_check import ScopeChecker
 from orchestrator.planner.validator import PlanValidator
 from orchestrator.registry.agents import AgentRegistry
@@ -41,6 +45,10 @@ class OrchestratorCoordinator:
         self.task_manager = TaskManager(self.storage)
         self.validator = PlanValidator()
         self.registry = AgentRegistry()
+        self.policy_bridge = PolicyBridge(self.root_dir)
+        self.approval_manager = ApprovalManager(self.root_dir)
+        self.audit_logger = AuditLogger(self.root_dir)
+        self.projector = CurrentOpsProjector(self.root_dir)
 
     def submit_plan(self, plan_data_or_file: dict[str, Any] | str | Path) -> dict[str, Any]:
         """Validate and submit an execution plan, registering tasks and resolving ready items."""
@@ -85,6 +93,13 @@ class OrchestratorCoordinator:
         # 4. If workflow is approved, resolve initial ready tasks
         if initial_wf_state == WorkflowState.APPROVED.value:
             self._advance_ready_tasks(wf_id)
+
+        self.audit_logger.log_event(
+            "submitted",
+            workflow_id=wf_id,
+            details={"title": plan["title"], "tasks_count": len(created_tasks)},
+        )
+        self.projector.project(self.task_manager.list_tasks())
 
         return {
             "workflow_id": wf_id,
@@ -150,6 +165,7 @@ class OrchestratorCoordinator:
                 "snapshot_hash": baseline["snapshot_hash"],
                 "timestamp": now,
             },
+            "active_task_id": task_id,
             "created_at": now,
             "updated_at": now,
         }
@@ -161,10 +177,20 @@ class OrchestratorCoordinator:
             task_id, TaskState.RUNNING, ActorRole.ORCHESTRATOR
         )
 
+        self.audit_logger.log_event(
+            "started", task_id=task_id, workflow_id=wf_id, run_id=run_id
+        )
+        self.audit_logger.log_event(
+            "lock_acquired", task_id=task_id, workflow_id=wf_id, run_id=run_id
+        )
+        self.projector.project(self.task_manager.list_tasks())
+
         return {
             "run_id": run_id,
             "task_id": task_id,
             "baseline": baseline,
+            "intent_record": intent_record,
+            "created_at": now,
         }
 
     def complete_task_execution(
@@ -235,11 +261,31 @@ class OrchestratorCoordinator:
         self._refresh_workflow_status(task["workflow_id"])
         return scope_res
 
-    def approve_task(self, task_id: str) -> dict[str, Any]:
+    def approve_task(
+        self,
+        task_id: str,
+        token: str | None = None,
+        approver: str = "human",
+    ) -> dict[str, Any]:
         """Human approval grants task completion and unlocks downstream ready tasks."""
         task = self.task_manager.get_task(task_id)
         if not task:
             raise ValueError(f"Task '{task_id}' not found")
+
+        if self.approval_manager.has_pending_approval(task_id):
+            if token is not None:
+                self.approval_manager.grant_approval(task_id, token, approver)
+            else:
+                rec = self.approval_manager.get_approval(task_id)
+                if rec:
+                    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                    rec["status"] = "granted"
+                    rec["granted_by"] = approver
+                    rec["granted_at"] = now
+                    rec["consumed"] = True
+                    rec["token"] = None
+                    path = self.approval_manager._approval_file(task_id)
+                    self.approval_manager._atomic_write(path, rec)
 
         self.task_manager.update_task_status(
             task_id, TaskState.APPROVED, ActorRole.HUMAN
@@ -247,6 +293,14 @@ class OrchestratorCoordinator:
         wf_id = task["workflow_id"]
         advanced = self._advance_ready_tasks(wf_id)
         self._refresh_workflow_status(wf_id)
+
+        self.audit_logger.log_event(
+            "approval_granted",
+            task_id=task_id,
+            workflow_id=wf_id,
+            details={"approver": approver},
+        )
+        self.projector.project(self.task_manager.list_tasks())
 
         return {"task_id": task_id, "status": "approved", "unlocked_tasks": advanced}
 
