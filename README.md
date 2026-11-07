@@ -5,7 +5,7 @@
 
 A reusable ruleset for running several AI coding agents in one repository without them stepping on each other, or on you.
 
-[![Version](https://img.shields.io/badge/version-v2.5.0-blue?style=flat-square)](#versions-and-pins)
+[![Version](https://img.shields.io/badge/version-v2.5.1-blue?style=flat-square)](#versions-and-pins)
 [![Rules](https://img.shields.io/badge/rules-AGENTS.md-informational?style=flat-square)](RULES.md)
 [![Kit](https://img.shields.io/badge/kit-Python%203%20%7C%20sh%20%7C%20PowerShell-4c566a?style=flat-square)](kit/README.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -19,7 +19,7 @@ A reusable ruleset for running several AI coding agents in one repository withou
 
 The core is plain text: a rules block that your agents read and follow, plus a small live task log. An optional kit of hooks and scripts enforces part of those rules mechanically. Works with Claude Code, Gemini/Antigravity, Codex, Cursor, OpenCode and Roo, at different levels of support (see [Tool support](#tool-support)).
 
-Status: v2.5.0 is the latest release (git tag and GitHub release). License: MIT.
+Status: v2.5.1 is the latest release (git tag and GitHub release). License: MIT.
 
 If you are an AI agent, go to [For AI agents](#for-ai-agents).
 
@@ -372,7 +372,8 @@ Always pin to a commit SHA. The rules block is the same across v2.x unless the c
 
 | Version | Commit SHA | Notes |
 |---|---|---|
-| v2.5.0 | `ad7690a20ecb09eec27d0d7bd2d3f46ce11324e8` | Current. Multi-agent host orchestrator, JSON schema contracts, active lock guard, governance pipeline, anti-monolith rules & skills suite |
+| v2.5.1 | `672eeab0556f87494a86bdfcbfb49eeb7d163fcf` | Current. Added `figcraft-design` skill to kit suite, manifest distribution for Claude Code & Antigravity |
+| v2.5.0 | `ad7690a20ecb09eec27d0d7bd2d3f46ce11324e8` | Previous. Multi-agent host orchestrator, JSON schema contracts, active lock guard, governance pipeline, anti-monolith rules & skills suite |
 | v2.4.0 | `b6404a60c1d5f95c7ac152f88a08dc8315f4b2f3` | Previous. Chief and worker rule, `worker-check`, English-only rule, non-interactive clause, LF line endings |
 | v2.3.2 | `32c29b658bf45e00ccf2a3c2915a2bdb48cc4499` | Use this or later with Antigravity |
 | v2.3.1 | `8fcf69b0e9e97c698a489d133f523c6d99c83a0f` | Ships an Antigravity hook the IDE cannot run |
