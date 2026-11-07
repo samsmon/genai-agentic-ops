@@ -12,7 +12,7 @@ tool:claude|copy|skills/modular-code/SKILL.md|.claude/skills/modular-code/SKILL.
 tool:claude|copy|skills/worker-delegation/SKILL.md|.claude/skills/worker-delegation/SKILL.md
 tool:claude|copy|skills/harness-builder/SKILL.md|.claude/skills/harness-builder/SKILL.md
 tool:claude|copy|skills/readme-architect/SKILL.md|.claude/skills/readme-architect/SKILL.md
-tool:claude|copy|skills/figcraft-design/SKILL.md|.claude/skills/figcraft-design/SKILL.md
+tool:claude|copy|skills/figma-design/SKILL.md|.claude/skills/figma-design/SKILL.md
 tool:codex|copy|adapters/codex/guard.py|.codex/hooks/guard.py
 tool:codex|merge-json|adapters/codex/hooks.json|.codex/hooks.json
 tool:cursor|copy|adapters/cursor/guard.py|.cursor/hooks/guard.py
@@ -24,7 +24,7 @@ tool:antigravity|copy|skills/modular-code/SKILL.md|.agent/skills/modular-code/SK
 tool:antigravity|copy|skills/worker-delegation/SKILL.md|.agent/skills/worker-delegation/SKILL.md
 tool:antigravity|copy|skills/harness-builder/SKILL.md|.agent/skills/harness-builder/SKILL.md
 tool:antigravity|copy|skills/readme-architect/SKILL.md|.agent/skills/readme-architect/SKILL.md
-tool:antigravity|copy|skills/figcraft-design/SKILL.md|.agent/skills/figcraft-design/SKILL.md
+tool:antigravity|copy|skills/figma-design/SKILL.md|.agent/skills/figma-design/SKILL.md
 githooks|copy-exec|githooks/commit-msg|.githooks/commit-msg
 githooks|copy-exec|githooks/pre-commit|.githooks/pre-commit
 githooks|copy|scripts/commit-msg-check.sh|scripts/agentic-ops/commit-msg-check.sh

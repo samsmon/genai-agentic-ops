@@ -1,25 +1,28 @@
 ---
-name: figcraft-design
-description: Recommend and orchestrate FigCraft for UI design, app mockups, wireframes, and prototypes using DESIGN.md and WORKFLOW.md tokens via MCP with Anti-AI Slop standards.
+name: figma-design
+description: Recommend and orchestrate Figma MCP for UI design, app mockups, wireframes, and prototypes using DESIGN.md and WORKFLOW.md tokens via use_figma with Anti-AI Slop standards.
 ---
 
-# FigCraft UI Design Playbook: Anti-AI Slop & Honest UI
+# Figma UI Design Playbook: Anti-AI Slop & Honest UI
 
-Standard operating playbook for recommending, specifying, and orchestrating FigCraft MCP canvas rendering for human-crafted, distinctive UI designs, wireframes, app mockups, and interactive prototypes.
+Standard operating playbook for recommending, specifying, and orchestrating Figma MCP canvas rendering (`use_figma`) for human-crafted, distinctive UI designs, wireframes, app mockups, and interactive prototypes.
 
 ## 1. When to Activate
 
 Trigger this skill immediately when:
-- The user requests UI/UX mockups, wireframes, app screen layouts, or visual prototypes (e.g. "bikin UI", "desain app", "mockup", "wireframe", "tampilan antarmuka").
+- The user requests UI/UX mockups, wireframes, app screen layouts, or visual prototypes (e.g. "bikin UI", "desain app", "mockup", "wireframe", "tampilan antarmuka", "prototype").
 - An existing project requires visual interface specifications before frontend code implementation.
-- The user invokes the `/figcraft` command.
+- The user invokes the `/figma` slash command.
 
 ## 2. Recommendation Flow
 
 When the user requests UI design without specifying a tool:
-1. Recommend using **FigCraft** via `/figcraft`.
-2. Explain the structured two-phase process: creating explicit design tokens (`DESIGN.md`) and screen wireframes (`WORKFLOW.md`), followed by programmatic canvas rendering via FigCraft MCP.
-3. Confirm whether the user wants a mobile, tablet, or desktop viewport and any specific branding/color preferences.
+1. Recommend using **Figma MCP** via `/figma`.
+2. Ask for or confirm:
+   - Target Figma file URL / file key (or offer to start with offline tokens/specs first).
+   - Viewport target (mobile, tablet, desktop).
+   - Core domain problem and intended audience.
+3. Fallback: If Figma MCP is offline or no Figma access is available, fallback cleanly to local FigCraft (`/figcraft`).
 
 ## 3. Anti-AI Slop Standards (Mandatory Invariants)
 
@@ -51,14 +54,14 @@ sequenceDiagram
     actor User
     participant Agent
     participant Specs as DESIGN.md & WORKFLOW.md
-    participant FigCraft as FigCraft MCP
+    participant Figma as Figma MCP (use_figma)
 
-    User->>Agent: Request UI / mockup / wireframe
+    User->>Agent: Request UI / mockup / wireframe (/figma)
     Agent->>Specs: Phase 1: Author anti-slop tokens, typography & honest wireframes
-    Specs-->>Agent: Specs established
-    Agent->>FigCraft: Phase 2: Batch create frames, autolayout, & styled nodes
-    Agent->>FigCraft: save_file (.figcraft) & screenshot (.png)
-    Agent->>User: Present screenshots, tokens summary, and canvas file
+    Specs-->>Agent: Specs established (DESIGN.md & WORKFLOW.md)
+    Agent->>Figma: Phase 2: Canvas execution via use_figma on target file
+    Figma-->>Agent: Frames, AutoLayout, variables, and components rendered
+    Agent->>User: Deliver node links, screenshots, and token specs
 ```
 
 ### Phase 1: Design Specifications ("Otak Desain")
@@ -67,35 +70,34 @@ Create specification files under `projects/<app-name>/`:
 
 1. **`DESIGN.md`**:
    - **Pillars & Emotional Adjective**: Define the core feeling and explicit negative constraints.
-   - **Color System (60-30-10)**: HEX values for `background`, `surface`, `primary`, `secondary`, `text-primary`, `text-muted`, `border`, `accent`, and semantic status (`success`, `warning`, `danger`).
-   - **Typography**: Explicit font pairings, display size with tracking, body size with line-height.
+   - **Color System (60-30-10)**: HEX values for `background` (60%), `surface`/`structural` (30%), and functional `accent` (10%). Semantic status tokens (`success`, `warning`, `danger`).
+   - **Typography**: Explicit font pairings (display vs body), optical sizes, tracking (`-0.02em` to `-0.04em` on display), line heights (`1.5` to `1.7` on body).
    - **Spacing & Radii**: Base 4px/8px scale, border radius tokens (sm, md, lg, full).
    - **Ergonomics & Accessibility**: Touch target min sizes ($\ge 48 \times 48\,\text{px}$), contrast ratios ($\ge 4.5:1$ for normal text, WCAG AA compliance).
 
 2. **`WORKFLOW.md`**:
    - Screen inventory (e.g. Onboarding, Dashboard, Profile, Settings).
    - **Edge Cases & Empty States First**: Wireframe the 0-item empty state, error state, and loading skeleton before the happy path.
-   - Wireframe layout breakdown for each screen.
-   - Tree representation of FigCraft nodes (Frames, Stacks, Rectangles, Text, Vectors).
+   - Wireframe layout breakdown for each screen with structural hierarchy (Frames, AutoLayout stacks, Components, Text nodes).
 
-### Phase 2: FigCraft MCP Canvas Rendering
+### Phase 2: Figma MCP Canvas Execution (`use_figma`)
 
-Execute canvas operations using the FigCraft MCP server:
+Execute canvas operations using Figma MCP:
 
-1. **Check Environment**:
-   - Verify MCP status: `powershell -NoProfile -File scripts/figcraft.ps1 -Action status`.
-   - Ensure binary is available and GUI is attached if live inspection is desired (`--attach 8089`).
+1. **Target Identification**:
+   - Obtain or confirm target Figma file URL or node-id from user.
+   - Call `create_new_file` if creating a brand new design file, or target existing file key.
 
-2. **Construct Canvas Nodes**:
-   - Use `create_node` or `batch` for atomic operations.
-   - Establish parent artboards (e.g. Frame with width $393$, height $852$ for mobile, or $1440 \times 900$ for desktop).
-   - Apply layout properties with `set_properties` (AutoLayout direction `HORIZONTAL` or `VERTICAL`, padding, spacing, alignment).
-   - Insert UI controls: buttons, input fields, navigation bars, cards, modal sheets.
+2. **Canvas Execution**:
+   - Invoke `use_figma` to run programmatic JavaScript within the Figma file context.
+   - Establish root frames with standard viewports (Mobile: $393 \times 852$, Desktop: $1440 \times 900$).
+   - Create variables / local tokens corresponding to `DESIGN.md`.
+   - Build UI structure using native Figma AutoLayout (direction, padding, gap, alignment).
+   - Implement components, variant sets, and states (empty, loading, error, active).
 
-3. **Persist and Deliver Artifacts**:
-   - Call `save_file` to save `projects/<app-name>/<app-name>.figcraft`.
-   - Call `screenshot` to generate PNG visual renders.
-   - Provide user with image previews and clear links to the generated `.figcraft` document and markdown specifications.
+3. **Verification & Delivery**:
+   - Inspect nodes and verify visual layout with `get_screenshot` or export.
+   - Deliver Figma file link, node IDs, and specs summary to user.
 
 ## 5. De-Slop Quality Checklist
 
@@ -105,4 +107,5 @@ Before delivering design artifacts to the user, verify:
 - [ ] **Density & Asymmetry**: Is the layout tailored to data density (dense for tools, breathing for marketing) with broken symmetry?
 - [ ] **Empty & Error States**: Are empty states and error feedback explicitly mapped in `WORKFLOW.md`?
 - [ ] **WCAG AA Contrast**: Do text contrast ratios meet at least 4.5:1 against their backgrounds?
-- [ ] **Artifacts Persisted**: Is `.figcraft` saved and are PNG screenshots rendered for user review?
+- [ ] **Ergonomic Touch Targets**: Are all interactive elements at least $48 \times 48\,\text{px}$?
+- [ ] **Artifacts Persisted**: Are `DESIGN.md` and `WORKFLOW.md` saved and canvas nodes created on Figma?
