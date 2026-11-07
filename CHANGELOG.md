@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- Agent Skills Suite: Enhanced `figcraft-design` skill with Anti-AI Slop standards and Honest UI invariants (banned tropes, typography-first hierarchy, restrained 60-30-10 palette, layout asymmetry, 4 honest screen questions, edge-cases first, and de-slop verification checklist).
+
 ## v2.5.1 - 2026-11-07 (commit `672eeab0556f87494a86bdfcbfb49eeb7d163fcf`)
 - Agent Skills Suite: Added `figcraft-design` skill under `kit/skills/` (and host manifest mappings) for AI-driven interface design, wireframing, and MCP-driven canvas automation with FigCraft (`storytold/figcraft`).
 - Kit Distribution: Updated `kit/MANIFEST` to automatically distribute `figcraft-design` to Claude Code (`.claude/skills/figcraft-design/SKILL.md`) and Antigravity (`.agent/skills/figcraft-design/SKILL.md`).
