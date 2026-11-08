@@ -25,9 +25,11 @@ from orchestrator.core.workflow_engine import WorkflowEngine
 from orchestrator.governance.approval import ApprovalManager
 from orchestrator.governance.audit import AuditLogger
 from orchestrator.governance.lock import LockManager
+from orchestrator.governance.metrics import TelemetryLedger
 from orchestrator.governance.policy_bridge import PolicyBridge
 from orchestrator.governance.process_info import get_host_tuple, is_process_alive
 from orchestrator.governance.projection import CurrentOpsProjector
+from orchestrator.governance.quarantine import WorkspaceQuarantine
 from orchestrator.governance.scope_check import ScopeChecker
 from orchestrator.planner.validator import PlanValidator
 from orchestrator.registry.agents import AgentRegistry
@@ -49,6 +51,8 @@ class OrchestratorCoordinator:
         self.approval_manager = ApprovalManager(self.root_dir)
         self.audit_logger = AuditLogger(self.root_dir)
         self.projector = CurrentOpsProjector(self.root_dir)
+        self.quarantine = WorkspaceQuarantine(self.root_dir)
+        self.telemetry = TelemetryLedger(self.root_dir)
 
     def submit_plan(self, plan_data_or_file: dict[str, Any] | str | Path) -> dict[str, Any]:
         """Validate and submit an execution plan, registering tasks and resolving ready items."""
@@ -273,19 +277,11 @@ class OrchestratorCoordinator:
             raise ValueError(f"Task '{task_id}' not found")
 
         if self.approval_manager.has_pending_approval(task_id):
-            if token is not None:
-                self.approval_manager.grant_approval(task_id, token, approver)
-            else:
-                rec = self.approval_manager.get_approval(task_id)
-                if rec:
-                    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-                    rec["status"] = "granted"
-                    rec["granted_by"] = approver
-                    rec["granted_at"] = now
-                    rec["consumed"] = True
-                    rec["token"] = None
-                    path = self.approval_manager._approval_file(task_id)
-                    self.approval_manager._atomic_write(path, rec)
+            if not token:
+                raise ValueError(
+                    f"Approval token is required to approve task '{task_id}' with a pending approval request"
+                )
+            self.approval_manager.grant_approval(task_id, token, approver)
 
         self.task_manager.update_task_status(
             task_id, TaskState.APPROVED, ActorRole.HUMAN
@@ -333,7 +329,7 @@ class OrchestratorCoordinator:
             alive = is_process_alive(hostname, pid, start_time)
             if alive is False:
                 # Process is dead without writing result.json
-                task_id = intent.get("task_id")
+                task_id = intent.get("active_task_id") or intent.get("task_id")
                 if task_id:
                     task = self.task_manager.get_task(task_id)
                     if task and task.get("status") == TaskState.RUNNING.value:

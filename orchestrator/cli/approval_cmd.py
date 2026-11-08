@@ -18,9 +18,18 @@ from orchestrator.cli.envelope import (
 )
 from orchestrator.core.coordinator import OrchestratorCoordinator
 from orchestrator.core.state_machine import ActorRole, TaskState
+from orchestrator.governance.approval import ensure_interactive_environment
 
 
 def handle_approval_show(args: argparse.Namespace, coord: OrchestratorCoordinator) -> None:
+    try:
+        ensure_interactive_environment()
+    except ValueError as e:
+        emit_envelope(
+            ok=False,
+            error={"code": "APPROVAL_FORBIDDEN", "message": str(e)},
+            exit_code=EXIT_ERROR,
+        )
     task = coord.task_manager.get_task(args.task_id)
     if not task:
         emit_envelope(

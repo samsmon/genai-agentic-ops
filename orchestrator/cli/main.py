@@ -32,6 +32,8 @@ from orchestrator.cli.envelope import (
     emit_envelope,
     make_envelope,
 )
+from orchestrator.cli.mcp_server import handle_mcp_serve, register_mcp_subparser
+from orchestrator.cli.watch_cmd import handle_watch, register_watch_subparser
 from orchestrator.core.coordinator import OrchestratorCoordinator
 from orchestrator.core.runner import TaskRunner
 
@@ -114,7 +116,11 @@ def handle_task_run(args: argparse.Namespace, coord: OrchestratorCoordinator) ->
 
 def handle_task_approve(args: argparse.Namespace, coord: OrchestratorCoordinator) -> None:
     try:
-        res = coord.approve_task(args.task_id)
+        res = coord.approve_task(
+            args.task_id,
+            token=getattr(args, "token", None),
+            approver=getattr(args, "approver", None) or "human",
+        )
         emit_envelope(ok=True, data=res, exit_code=EXIT_OK)
     except Exception as e:
         emit_envelope(ok=False, error={"code": "APPROVAL_FAILED", "message": str(e)}, exit_code=EXIT_ERROR)
@@ -156,6 +162,7 @@ def handle_status(args: argparse.Namespace, coord: OrchestratorCoordinator) -> N
             "workflow": coord.storage.load_workflow(args.workflow_id),
             "tasks": coord.task_manager.list_tasks(workflow_id=args.workflow_id),
             "active_lock": lock_data, "stale_lock": stale_lock, "orphaned_runs_count": len(orphans),
+            "telemetry": coord.telemetry.summarize(workflow_id=args.workflow_id),
         }
     else:
         workflows = coord.storage.list_workflows()
@@ -163,6 +170,7 @@ def handle_status(args: argparse.Namespace, coord: OrchestratorCoordinator) -> N
             "workflows_count": len(workflows), "workflows": workflows,
             "tasks_count": len(coord.task_manager.list_tasks()),
             "active_lock": lock_data, "stale_lock": stale_lock, "orphaned_runs_count": len(orphans),
+            "telemetry": coord.telemetry.summarize(),
         }
     emit_envelope(ok=True, data=data, exit_code=EXIT_OK)
 
@@ -230,6 +238,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_trun.add_argument("--timeout", type=int, help="Execution timeout in seconds")
     p_tapp = task_subs.add_parser("approve", help="Approve verified task")
     p_tapp.add_argument("task_id", help="Task ID")
+    p_tapp.add_argument("--token", help="One-time cryptographic approval token (required if pending approval exists)")
+    p_tapp.add_argument("--approver", default="human", help="Approver identity")
 
     # workflow run
     p_wf = subparsers.add_parser("workflow", help="Workflow management")
@@ -254,6 +264,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     # audit show
     register_audit_subparser(subparsers)
+
+    # mcp & watch
+    register_mcp_subparser(subparsers)
+    register_watch_subparser(subparsers)
 
     # doctor
     subparsers.add_parser("doctor", help="Inspect orchestrator health and environment")
@@ -302,6 +316,10 @@ def main(argv: list[str] | None = None) -> None:
     elif args.subcommand == "audit":
         if args.audit_action == "show":
             handle_audit_show(args, coordinator)
+    elif args.subcommand == "mcp":
+        handle_mcp_serve(args, coordinator)
+    elif args.subcommand == "watch":
+        handle_watch(args, coordinator)
     elif args.subcommand == "doctor":
         handle_doctor(args, coordinator)
 

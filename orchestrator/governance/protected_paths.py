@@ -18,6 +18,7 @@ IS_WINDOWS = platform.system() == "Windows"
 BUILTIN_PROTECTED_PATHS: tuple[str, ...] = (
     ".git",
     ".agentic/config",
+    ".agentic/approvals",
     ".claude",
     ".githooks",
     "RULES.md",
@@ -121,3 +122,17 @@ def check_path_overlap_with_protected(
                     f"allowed_path '{allowed}' overlaps protected path '{protected}'"
                 )
     return conflicts
+
+
+def are_paths_disjoint(paths_a: list[str], paths_b: list[str]) -> bool:
+    """Return True if two allowed_paths lists have no overlapping files or directories."""
+    if not paths_a or not paths_b:
+        return False
+    for a in paths_a:
+        norm_a = a.replace("\\", "/").strip("./")
+        for b in paths_b:
+            norm_b = b.replace("\\", "/").strip("./")
+            if is_path_matching(norm_a, norm_b) or is_path_matching(norm_b, norm_a):
+                return False
+    return True
+

@@ -85,8 +85,17 @@ class LockManager:
         try:
             content = json.dumps(lock_data, indent=2).encode("utf-8")
             os.write(fd, content)
-            with open(self.active_file, "wb") as f_act:
-                f_act.write(content)
+            os.fsync(fd)
+            tmp_active = self.locks_dir / f"active.json.tmp.{os.getpid()}.{uuid.uuid4().hex[:8]}"
+            try:
+                with open(tmp_active, "wb") as f_act:
+                    f_act.write(content)
+                    f_act.flush()
+                    os.fsync(f_act.fileno())
+                os.replace(tmp_active, self.active_file)
+            finally:
+                if tmp_active.exists():
+                    tmp_active.unlink(missing_ok=True)
         finally:
             os.close(fd)
 

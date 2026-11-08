@@ -53,6 +53,41 @@ class AgentRegistry:
         """Retrieve an adapter by name."""
         return self._adapters.get(name)
 
+    def resolve_runtime(
+        self,
+        requested_runtime: str,
+        *,
+        role: str = "developer",
+        exclude_runtime: str | None = None,
+    ) -> AgentAdapter | None:
+        """Resolve an adapter by explicit name or 'auto' capability-based routing.
+
+        When requested_runtime is 'auto':
+        - Prefers detected (installed) binaries over fixtures.
+        - If role is 'reviewer' and exclude_runtime is provided, prefers a different
+          runtime to ensure cross-model adversarial review.
+        """
+        if requested_runtime and requested_runtime != "auto":
+            return self.get_adapter(requested_runtime)
+
+        candidates = list(self._adapters.values())
+        if not candidates:
+            return None
+
+        # Prefer detected binaries first, then non-excluded runtime for reviewer role
+        def _score(adapter: AgentAdapter) -> tuple[int, int, str]:
+            is_detected = 1 if adapter.detect() else 0
+            cross_model = (
+                1
+                if (role == "reviewer" and exclude_runtime and adapter.name != exclude_runtime)
+                else 0
+            )
+            return (is_detected, cross_model, adapter.name)
+
+        candidates.sort(key=_score, reverse=True)
+        return candidates[0]
+
+
     def to_contract_dict(self) -> dict[str, Any]:
         """Serialize current agent registry into dictionary conforming to schema."""
         agents_dict: dict[str, Any] = {}

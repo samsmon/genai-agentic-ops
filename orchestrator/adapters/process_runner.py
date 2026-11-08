@@ -37,6 +37,7 @@ def sanitize_environment(
     if strip_anthropic_api_key and (not env_overrides or "ANTHROPIC_API_KEY" not in env_overrides):
         env.pop("ANTHROPIC_API_KEY", None)
 
+    env["AGENTIC_NON_INTERACTIVE"] = "1"
     if env_overrides:
         env.update(env_overrides)
     return env

@@ -105,6 +105,7 @@
           "runtime": {
             "type": "string",
             "enum": [
+              "auto",
               "host",
               "antigravity",
               "claude-code",

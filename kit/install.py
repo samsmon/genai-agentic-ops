@@ -17,16 +17,7 @@ tracked in the project history (nothing is written) | 4 a decision is needed: ex
 the AGENTS.md markers are damaged (nothing is written) | 5 hidden-mode sync stopped (its own code is printed) |
 6 kit source unreachable.
 """
-import argparse
-import difflib
-import hashlib
-import io
-import json
-import os
-import re
-import subprocess
-import sys
-import urllib.request
+import argparse, difflib, hashlib, io, json, os, re, subprocess, sys, urllib.request
 
 RAW_BASE = os.environ.get("AGENTIC_OPS_RAW_BASE", "https://raw.githubusercontent.com/samsmon/genai-agentic-ops")
 TOOLS = ("claude", "codex", "cursor", "opencode", "antigravity")
@@ -43,11 +34,10 @@ RECEIPT = "scripts/agentic-ops/INSTALLED.json"
 
 class Fail(Exception):
     def __init__(self, code, msg):
-        Exception.__init__(self, msg)
+        super().__init__(msg)
         self.code = code
 
 
-# ---------------------------------------------------------------- sources
 class LocalSource:
     def __init__(self, kit_dir):
         self.kit_dir = os.path.abspath(kit_dir)
@@ -64,15 +54,15 @@ class LocalSource:
 
 class RemoteSource:
     def __init__(self, pin):
-        self.pin = pin
-        self.label = "pin:" + pin
+        self.pin, self.label = pin, "pin:" + pin
 
     def _get(self, rel):
         url = f"{RAW_BASE}/{self.pin}/{rel}"
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "agentic-ops-install"}), timeout=30) as r:
+            req = urllib.request.Request(url, headers={"User-Agent": "agentic-ops-install"})
+            with urllib.request.urlopen(req, timeout=30) as r:
                 return r.read()
-        except Exception as e:  # noqa: BLE001 - any network or file error is the same failure for the user
+        except Exception as e:  # noqa: BLE001
             raise Fail(6, f"cannot fetch {url}: {e}")
 
     def kit(self, rel):
@@ -218,7 +208,6 @@ def dumps(obj):
     return json.dumps(obj, indent=2, ensure_ascii=False) + "\n"
 
 
-# ---------------------------------------------------------------- helpers
 def sha(b):
     return hashlib.sha256(b).hexdigest()
 
@@ -251,8 +240,8 @@ def read_text(path):
 
 
 def short_diff(old, new, label):
-    d = list(difflib.unified_diff(old.splitlines(), new.splitlines(), "installed", "kit", lineterm="", n=0))
-    d = [l for l in d if not l.startswith(("---", "+++"))]
+    d = [l for l in difflib.unified_diff(old.splitlines(), new.splitlines(), "installed", "kit", lineterm="", n=0)
+         if not l.startswith(("---", "+++"))]
     head = f"      {len(d)} differing line(s) in {label}"
     return "\n".join([head] + ["      " + l[:150] for l in d[:12]] + (["      ..."] if len(d) > 12 else []))
 

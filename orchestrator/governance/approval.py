@@ -8,12 +8,27 @@ Implements M4 human approval gates:
 from __future__ import annotations
 
 import datetime
+import hashlib
 import hmac
 import json
 import os
 import secrets
 from pathlib import Path
 from typing import Any
+
+
+def _hash_token(token: str) -> str:
+    """Compute SHA-256 hex digest of an approval token."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def ensure_interactive_environment() -> None:
+    """Reject approval operations when invoked from a headless worker environment."""
+    if os.environ.get("AGENTIC_NON_INTERACTIVE") == "1":
+        raise ValueError(
+            "Approval operations are forbidden in non-interactive worker sessions (AGENTIC_NON_INTERACTIVE=1)"
+        )
+
 
 
 class ApprovalManager:
@@ -56,6 +71,7 @@ class ApprovalManager:
             "schema_version": "1.0",
             "task_id": task_id,
             "token": token,
+            "token_hash": _hash_token(token),
             "status": "pending",
             "created_at": now,
             "context": context or {},
@@ -79,6 +95,7 @@ class ApprovalManager:
 
         Raises ValueError if approval is missing, not pending, or token is invalid.
         """
+        ensure_interactive_environment()
         if not token or not isinstance(token, str):
             raise ValueError(f"Approval token is required to grant approval for task '{task_id}'")
 
@@ -91,9 +108,15 @@ class ApprovalManager:
                 f"Cannot grant approval for task '{task_id}': status is already '{record.get('status')}'"
             )
 
+        stored_hash = record.get("token_hash")
         stored_token = record.get("token") or ""
-        # Timing-safe token comparison to prevent side-channel attacks
-        if not hmac.compare_digest(stored_token, token):
+        # Timing-safe token comparison (supports both token_hash and legacy token)
+        if stored_hash:
+            valid = hmac.compare_digest(stored_hash, _hash_token(token))
+        else:
+            valid = hmac.compare_digest(stored_token, token)
+
+        if not valid:
             raise ValueError(
                 f"Invalid approval token for task '{task_id}': token does not match active authorization request"
             )
@@ -104,6 +127,7 @@ class ApprovalManager:
         record["granted_at"] = now
         record["consumed"] = True
         record["token"] = None  # Consume token so it cannot be reused
+        record["token_hash"] = None
 
         path = self._approval_file(task_id)
         self._atomic_write(path, record)
@@ -117,6 +141,7 @@ class ApprovalManager:
         approver: str = "human",
     ) -> dict[str, Any]:
         """Deny approval using one-time token."""
+        ensure_interactive_environment()
         if not token or not isinstance(token, str):
             raise ValueError(f"Approval token is required to deny approval for task '{task_id}'")
 
@@ -129,8 +154,14 @@ class ApprovalManager:
                 f"Cannot deny approval for task '{task_id}': status is already '{record.get('status')}'"
             )
 
+        stored_hash = record.get("token_hash")
         stored_token = record.get("token") or ""
-        if not hmac.compare_digest(stored_token, token):
+        if stored_hash:
+            valid = hmac.compare_digest(stored_hash, _hash_token(token))
+        else:
+            valid = hmac.compare_digest(stored_token, token)
+
+        if not valid:
             raise ValueError(
                 f"Invalid approval token for task '{task_id}': token does not match active authorization request"
             )
@@ -142,6 +173,7 @@ class ApprovalManager:
         record["reason"] = reason
         record["consumed"] = True
         record["token"] = None
+        record["token_hash"] = None
 
         path = self._approval_file(task_id)
         self._atomic_write(path, record)

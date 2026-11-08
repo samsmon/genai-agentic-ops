@@ -9,6 +9,7 @@ from collections import deque
 from typing import Any
 
 from orchestrator.core.state_machine import TaskState, WorkflowState
+from orchestrator.governance.protected_paths import are_paths_disjoint
 
 
 class WorkflowGraphError(Exception):
@@ -84,6 +85,27 @@ class WorkflowEngine:
                 eligible.append(task)
 
         return eligible
+
+    @staticmethod
+    def get_parallel_batches(ready_tasks: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+        """Group ready tasks into conflict-free batches with mutually disjoint allowed_paths."""
+        batches: list[list[dict[str, Any]]] = []
+        for task in ready_tasks:
+            t_paths = task.get("allowed_paths") or []
+            placed = False
+            if t_paths:
+                for batch in batches:
+                    if all(
+                        are_paths_disjoint(t_paths, existing.get("allowed_paths") or [])
+                        for existing in batch
+                    ):
+                        batch.append(task)
+                        placed = True
+                        break
+            if not placed:
+                batches.append([task])
+        return batches
+
 
     @staticmethod
     def compute_workflow_status(

@@ -61,11 +61,13 @@ class TaskRunner:
                 )
 
         runtime = task.get("runtime", "antigravity")
-        adapter = self.coord.registry.get_adapter(runtime)
+        role = task.get("role", "developer")
+        adapter = self.coord.registry.resolve_runtime(runtime, role=role)
         if not adapter:
             raise ValueError(f"No runtime adapter registered for runtime '{runtime}'")
 
-        # 2. Prepare execution (advisory lock, baseline snapshot, intent log)
+        # 2. Prepare execution (advisory lock, baseline snapshot, quarantine backup, intent log)
+        backup = self.coord.quarantine.capture_backup()
         prep = self.coord.prepare_task_execution(task_id)
         run_id = prep["run_id"]
         baseline = prep["baseline"]
@@ -142,6 +144,7 @@ class TaskRunner:
             protected_paths=task.get("protected_paths", []),
         )
         if scope_res.get("in_scope", False):
+            quarantined_files: list[str] = []
             self.coord.audit_logger.log_event(
                 "scope_verified",
                 task_id=task_id,
@@ -150,6 +153,13 @@ class TaskRunner:
                 details={"in_scope": True},
             )
         else:
+            quarantined_files = self.coord.quarantine.quarantine_and_rollback(
+                run_id=run_id,
+                diff=diff,
+                allowed_paths=task.get("allowed_paths", []),
+                protected_paths=task.get("protected_paths", []),
+                backup=backup,
+            )
             self.coord.audit_logger.log_event(
                 "blocked",
                 task_id=task_id,
@@ -158,6 +168,7 @@ class TaskRunner:
                 details={
                     "reason": "scope_or_monolith_violation",
                     "violations": scope_res.get("violations", []),
+                    "quarantined_files": quarantined_files,
                 },
             )
 
@@ -243,7 +254,10 @@ class TaskRunner:
         )
 
         # 8. Human approval handling
-        needs_approval = task.get("approval_required", True)
+        plan_doc = self.coord.storage.load_plan(task["workflow_id"]) or {}
+        needs_approval = task.get(
+            "approval_required", plan_doc.get("approval_required", True)
+        )
         if final_status == TaskState.VERIFIED.value and needs_approval:
             self.coord.approval_manager.request_approval(
                 task_id,
@@ -258,11 +272,12 @@ class TaskRunner:
             approval_record = {"required": False, "status": "not_required"}
 
         # 9. Result record conforming to contracts/result.schema.json
+        resolved_rt = adapter.runtime if runtime == "auto" else task.get("runtime", runtime)
         result_record = {
             "schema_version": "1.0",
             "task_id": task_id,
             "workflow_id": task["workflow_id"],
-            "runtime": task.get("runtime", runtime),
+            "runtime": resolved_rt,
             "execution": {
                 "exit_code": exec_res.exit_code,
                 "status": exec_res.status,
@@ -321,6 +336,20 @@ class TaskRunner:
             "completed_at": now_iso,
         }
         self.coord.audit_logger.record_run_summary(run_summary)
+        self.coord.telemetry.record_run_metrics(
+            run_id=run_id,
+            task_id=task_id,
+            workflow_id=task["workflow_id"],
+            runtime=resolved_rt,
+            role=role,
+            duration_ms=exec_res.duration_ms,
+            prompt_text=handoff.get("prompt", ""),
+            stdout_text=exec_res.stdout or "",
+            stderr_text=exec_res.stderr or "",
+            status=run_status,
+            verified=(final_status == TaskState.VERIFIED.value),
+            quarantined_files_count=len(quarantined_files),
+        )
 
         # 11. Refresh workflow status and update CURRENT_OPS.md projection
         self.coord._refresh_workflow_status(task["workflow_id"])

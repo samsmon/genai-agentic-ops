@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "genai-agentic-ops"
+version = "2.6.0"
+description = "Reusable ruleset and deterministic host-native orchestrator for running multiple AI coding agents in one repository."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [
+    { name = "samsmon" }
+]
+keywords = ["ai", "agents", "orchestrator", "governance", "claude-code", "antigravity", "codex", "gemini", "mcp"]
+dependencies = [
+    "jsonschema>=4.0.0",
+]
+
+[project.scripts]
+agentic = "orchestrator.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["orchestrator*", "kit*"]

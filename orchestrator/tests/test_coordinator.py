@@ -126,7 +126,6 @@ class TestCoordinator(unittest.TestCase):
 
         # Simulate dead host process in intent file and lock file
         intent = self.coord.storage.load_intent(run_id)
-        intent["task_id"] = t1_id
         intent["host"]["pid"] = 999999
         intent["host"]["process_start_time"] = "dead-start-time"
         self.coord.storage.write_intent(run_id, intent)
