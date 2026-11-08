@@ -88,6 +88,20 @@ class TestFileSystemStorage(unittest.TestCase):
         self.assertEqual(len(ready_tasks), 1)
         self.assertEqual(ready_tasks[0]["task_id"], "task-2")
 
+    def test_run_save_and_load_no_double_prefix(self) -> None:
+        run_data = {"status": "completed", "exit_code": 0}
+        # 1. run_id already starting with "run-"
+        p1 = self.storage.save_run("run-abc12345", run_data)
+        self.assertEqual(p1.name, "run-abc12345.json")
+        loaded1 = self.storage.load_run("run-abc12345")
+        self.assertEqual(loaded1, run_data)
+
+        # 2. run_id without "run-" prefix
+        p2 = self.storage.save_run("def67890", run_data)
+        self.assertEqual(p2.name, "run-def67890.json")
+        loaded2 = self.storage.load_run("def67890")
+        self.assertEqual(loaded2, run_data)
+
 
 if __name__ == "__main__":
     unittest.main()

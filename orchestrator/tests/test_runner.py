@@ -304,6 +304,63 @@ class TestRunner(unittest.TestCase):
         task = self.coord.task_manager.get_task(t_id)
         self.assertEqual(task["status"], TaskState.APPROVED.value)
 
+    def test_verification_command_mutating_out_of_scope_blocks_and_rolls_back(self) -> None:
+        p = copy.deepcopy(self.plan)
+        p["approval_required"] = False
+        t_spec = p["tasks"][0]
+        t_spec["allowed_paths"] = ["src/"]
+
+        # Verification command creates an out-of-scope file (docs/rogue.txt)
+        rogue_file = self.root / "docs" / "rogue.txt"
+        t_spec["verification_commands"] = [
+            f'"{sys.executable}" -c "import pathlib; pathlib.Path(r\'{rogue_file}\').parent.mkdir(parents=True, exist_ok=True); pathlib.Path(r\'{rogue_file}\').write_text(\'rogue\')"'
+        ]
+
+        def worker_effect(task: dict[str, Any], handoff: dict[str, Any]) -> None:
+            src_dir = self.root / "src"
+            src_dir.mkdir(parents=True, exist_ok=True)
+            (src_dir / "app.py").write_text("print('hello')", encoding="utf-8")
+
+        self.mock_adapter.side_effect = worker_effect
+        self.coord.submit_plan(p)
+        t_id = t_spec["task_id"]
+        res = self.runner.run_task(t_id)
+
+        self.assertFalse(res["verification"]["verified"])
+        self.assertFalse(res["verification"]["all_passed"])
+        self.assertFalse(res["diff"]["in_scope"])
+        task = self.coord.task_manager.get_task(t_id)
+        self.assertEqual(task["status"], TaskState.BLOCKED.value)
+        # Verify rogue file was rolled back
+        self.assertFalse(rogue_file.exists())
+
+    def test_verification_command_blocked_by_security_config(self) -> None:
+        # Write .agentic/config.json with allowed_verification_commands restricted to pytest
+        config_dir = self.root / ".agentic"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        (config_dir / "config.json").write_text(
+            json.dumps({"security": {"allowed_verification_commands": ["pytest", "npm test"]}}),
+            encoding="utf-8",
+        )
+
+        p = copy.deepcopy(self.plan)
+        p["approval_required"] = False
+        t_spec = p["tasks"][0]
+        t_spec["allowed_paths"] = ["src/"]
+        # Verification command is python, not in allowed_verification_commands
+        t_spec["verification_commands"] = [f'"{sys.executable}" -c "exit(0)"']
+
+        self.coord.submit_plan(p)
+        t_id = t_spec["task_id"]
+        res = self.runner.run_task(t_id)
+
+        self.assertFalse(res["verification"]["verified"])
+        self.assertFalse(res["verification"]["all_passed"])
+        cr = res["verification"]["command_results"][0]
+        self.assertIn("not allowed by security.allowed_verification_commands", cr["output_snippet"])
+        task = self.coord.task_manager.get_task(t_id)
+        self.assertEqual(task["status"], TaskState.BLOCKED.value)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -12,6 +12,7 @@ Implements M3 execution orchestration:
 from __future__ import annotations
 
 import datetime
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -177,33 +178,45 @@ class TaskRunner:
         all_passed = True
 
         if exec_res.exit_code == 0 and exec_res.status != "blocked" and scope_res.get("in_scope", False):
+            sec_config = self._get_security_config()
+            allowed_ver_cmds = sec_config.get("allowed_verification_commands")
+
             ver_commands = task.get("verification_commands") or []
             for cmd in ver_commands:
+                cmd_repr = cmd if isinstance(cmd, str) else " ".join(cmd)
+
+                # Validate against allowed_verification_commands if configured
+                if allowed_ver_cmds:
+                    if not self._is_verification_command_allowed(cmd_repr, allowed_ver_cmds):
+                        all_passed = False
+                        msg = (
+                            f"Verification command '{cmd_repr}' is not allowed by "
+                            f"security.allowed_verification_commands: {allowed_ver_cmds}"
+                        )
+                        command_results.append({
+                            "command": cmd_repr, "exit_code": 1, "passed": False,
+                            "output_snippet": msg,
+                        })
+                        break
+
                 # Validate command through PolicyBridge first
                 is_valid, policy_msg = self.coord.policy_bridge.validate_verification_command(cmd)
-                cmd_repr = cmd if isinstance(cmd, str) else " ".join(cmd)
                 if not is_valid:
                     all_passed = False
                     command_results.append({
-                        "command": cmd_repr,
-                        "exit_code": 1,
-                        "passed": False,
+                        "command": cmd_repr, "exit_code": 1, "passed": False,
                         "output_snippet": policy_msg,
                     })
                     break
 
                 cmd_list = self._format_command(cmd)
                 v_res = self.runner.run(
-                    command=cmd_list,
-                    cwd=self.coord.root_dir,
-                    timeout_seconds=60,
+                    command=cmd_list, cwd=self.coord.root_dir, timeout_seconds=60,
                 )
                 passed = (v_res.exit_code == 0)
                 snippet = (v_res.stdout + "\n" + v_res.stderr).strip()[:500]
                 command_results.append({
-                    "command": cmd_repr,
-                    "exit_code": v_res.exit_code,
-                    "passed": passed,
+                    "command": cmd_repr, "exit_code": v_res.exit_code, "passed": passed,
                     "output_snippet": snippet or ("Passed" if passed else "Failed"),
                 })
                 if not passed:
@@ -211,13 +224,49 @@ class TaskRunner:
                     break
 
             if all_passed and ver_commands:
-                self.coord.audit_logger.log_event(
-                    "verification_passed",
-                    task_id=task_id,
-                    workflow_id=task["workflow_id"],
-                    run_id=run_id,
-                    details={"commands": [cr["command"] for cr in command_results]},
+                # Ensure file modifications or new files created by verification_commands
+                # are also checked against allowed_paths / allowed_files (and rolled back if rogue)
+                allowed_paths = task.get("allowed_paths", []) or task.get("allowed_files", [])
+                protected_paths = task.get("protected_paths", [])
+                diff_post_ver = self.coord.scope_checker.compute_diff(baseline)
+                scope_post_ver = self.coord.scope_checker.verify_scope(
+                    diff_post_ver,
+                    allowed_paths=allowed_paths,
+                    protected_paths=protected_paths,
                 )
+                if not scope_post_ver.get("in_scope", False):
+                    all_passed = False
+                    quarantined = self.coord.quarantine.quarantine_and_rollback(
+                        run_id=run_id,
+                        diff=diff_post_ver,
+                        allowed_paths=allowed_paths,
+                        protected_paths=protected_paths,
+                        backup=backup,
+                    )
+                    quarantined_files.extend(quarantined)
+                    scope_res = scope_post_ver
+                    diff = self.coord.scope_checker.compute_diff(baseline)
+                    self.coord.audit_logger.log_event(
+                        "blocked",
+                        task_id=task_id,
+                        workflow_id=task["workflow_id"],
+                        run_id=run_id,
+                        details={
+                            "reason": "verification_mutated_out_of_scope",
+                            "violations": scope_post_ver.get("violations", []),
+                            "quarantined_files": quarantined,
+                        },
+                    )
+                else:
+                    diff = diff_post_ver
+                    scope_res = scope_post_ver
+                    self.coord.audit_logger.log_event(
+                        "verification_passed",
+                        task_id=task_id,
+                        workflow_id=task["workflow_id"],
+                        run_id=run_id,
+                        details={"commands": [cr["command"] for cr in command_results]},
+                    )
             elif not all_passed:
                 self.coord.audit_logger.log_event(
                     "blocked",
@@ -409,3 +458,30 @@ class TaskRunner:
                 return ["powershell", "-NoProfile", "-Command", f"& {cmd_str}"]
             return ["powershell", "-NoProfile", "-Command", cmd_str]
         return ["/bin/sh", "-c", cmd]
+
+    def _get_security_config(self) -> dict[str, Any]:
+        """Read project-level security configuration from .agentic/config.json if present."""
+        cfg_path = self.coord.root_dir / ".agentic" / "config.json"
+        if cfg_path.is_file():
+            try:
+                with open(cfg_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    return data.get("security", {})
+            except Exception:
+                return {}
+        return {}
+
+    @staticmethod
+    def _is_verification_command_allowed(cmd_repr: str, allowed_commands: list[str]) -> bool:
+        """Check if verification command matches configured allowed_verification_commands."""
+        clean = cmd_repr.strip()
+        for allowed in allowed_commands:
+            al = allowed.strip()
+            if clean == al or clean.startswith(al + " "):
+                return True
+            tokens = clean.split()
+            if tokens and tokens[0].lower() == al.lower():
+                return True
+            if al in tokens:
+                return True
+        return False

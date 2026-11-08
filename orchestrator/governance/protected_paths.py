@@ -8,6 +8,7 @@ Implements Threat Model Section 2.2 and 2.5:
 """
 from __future__ import annotations
 
+import fnmatch
 import os
 import platform
 from pathlib import Path
@@ -59,23 +60,40 @@ def canonicalize_path(path: str | Path, root_dir: str | Path) -> str:
 
 
 def is_path_matching(path_rel: str, pattern: str) -> bool:
-    """Check if normalized relative path matches a pattern or directory prefix."""
-    p = path_rel.rstrip("/")
-    pat = pattern.rstrip("/")
+    """Check if normalized relative path matches a pattern, glob, or directory prefix."""
+    p = path_rel.replace("\\", "/").strip("/")
+    pat = pattern.replace("\\", "/").strip("/")
 
     if IS_WINDOWS:
         p = p.lower()
         pat = pat.lower()
 
+    if not pat or not p:
+        return False
+
     if p == pat:
         return True
     if p.startswith(pat + "/"):
         return True
-    # If pattern is a prefix with wildcard or prefix match
-    if pat.endswith("*"):
-        prefix = pat[:-1]
-        if p.startswith(prefix):
+
+    # Standard fnmatch pattern matching (e.g. *.pem, *.key, *.env*, src/*.py)
+    if fnmatch.fnmatchcase(p, pat):
+        return True
+
+    # If pattern has no slash (file-only pattern), match against the basename
+    if "/" not in pat and fnmatch.fnmatchcase(p.split("/")[-1], pat):
+        return True
+
+    # Handle directory wildcards like docs/** or docs/*
+    if pat.endswith("/**"):
+        prefix = pat[:-3].rstrip("/")
+        if p == prefix or p.startswith(prefix + "/"):
             return True
+    elif pat.endswith("/*"):
+        prefix = pat[:-2].rstrip("/")
+        if p == prefix or p.startswith(prefix + "/"):
+            return True
+
     return False
 
 

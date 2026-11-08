@@ -34,8 +34,10 @@ TRAILER = re.compile(r"co-authored-by\s*:|signed-off-by\s*:|generated-by\s*:|gen
 BYPASS = re.compile(
     r"\b(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)\s*="
     r"|\$env:(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)\b|\bEnv:(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)\b"
+    r"|\bSet-Item\b[^\n]*\b(?:env:|env\\|env/)?(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)\b"
     r"|\b(?:export|setenv)\s+(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)\b"
-    r"|SetEnvironmentVariable\([^)]*(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)"
+    r"|SetEnvironmentVariable\([^)]*(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)",
+    re.I,
 )
 IDENTITY = re.compile(
     r"--author\b|\bGIT_(AUTHOR|COMMITTER)_(NAME|EMAIL)\b|-c\s+user\.(name|email)\b"
@@ -44,8 +46,11 @@ IDENTITY = re.compile(
 )
 DESTRUCTIVE = re.compile(
     r"\bgit\s+push\b[^\n]*(--force\b|--force-with-lease|\s-f\b|--delete\b)"
-    r"|\bgit\s+reset\s+--hard\b|\bgit\s+clean\s+-[a-z]*f|\bgit\s+branch\s+-D\b"
-    r"|\brm\s+-[a-z]*r[a-z]*f|\brm\s+-[a-z]*f[a-z]*r|\bRemove-Item\b[^\n]*-Recurse[^\n]*-Force"
+    r"|\bgit\s+reset\s+--hard\b|\bgit\s+clean\s+-[a-z]*f|\bgit\s+branch\s+(-D\b|--delete\b)"
+    r"|\bgit\s+tag\s+(-d\b|--delete\b)"
+    r"|\brm\s+-[a-z]*r[a-z]*f|\brm\s+-[a-z]*f[a-z]*r"
+    r"|\bRemove-Item\b[^\n]*(?:-Recurse[^\n]*-Force|-Force[^\n]*-Recurse)",
+    re.I,
 )
 
 

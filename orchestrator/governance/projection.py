@@ -27,7 +27,7 @@ Timestamp format: `YYYY-MM-DD HH:MM` (user's local time).
 
 CURRENT_OPS_FOOTER = """
 ## Archive
-Baris `done/failed/cancelled` lama dipindah ke `docs/CURRENT_OPS-archive.md` (terbaru di atas, verbatim). Jangan dibaca kecuali perlu.
+Older `done/failed/cancelled` rows moved to `docs/CURRENT_OPS-archive.md` (newest on top, verbatim). Do not read unless needed.
 """
 
 STATE_TO_OPS_STATUS: dict[str, str] = {

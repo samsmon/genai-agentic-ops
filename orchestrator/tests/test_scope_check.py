@@ -14,6 +14,7 @@ from pathlib import Path
 from orchestrator.governance.protected_paths import (
     canonicalize_path,
     check_path_overlap_with_protected,
+    is_path_matching,
     is_protected_path,
 )
 from orchestrator.governance.scope_check import ScopeChecker
@@ -132,6 +133,37 @@ class TestScopeCheck(unittest.TestCase):
         res = self.checker.verify_scope(diff, allowed_paths=["src/"])
         self.assertTrue(res["in_scope"])
         self.assertEqual(len(res["violations"]), 0)
+
+    def test_glob_pattern_matching(self) -> None:
+        # 1. *.pem, *.key, *.env* matching
+        self.assertTrue(is_path_matching("cert.pem", "*.pem"))
+        self.assertTrue(is_path_matching("certs/server.pem", "*.pem"))
+        self.assertTrue(is_path_matching("keys/server.key", "*.key"))
+        self.assertTrue(is_path_matching(".env.production", "*.env*"))
+        self.assertTrue(is_path_matching("config/.env.local", "*.env*"))
+        self.assertFalse(is_path_matching("cert.crt", "*.pem"))
+
+        # 2. src/*.py matching
+        self.assertTrue(is_path_matching("src/main.py", "src/*.py"))
+        self.assertFalse(is_path_matching("docs/main.py", "src/*.py"))
+
+        # 3. docs/** matching
+        self.assertTrue(is_path_matching("docs/readme.md", "docs/**"))
+        self.assertTrue(is_path_matching("docs/api/v1/spec.md", "docs/**"))
+
+        # 4. is_protected_path with custom glob patterns
+        extra = ["*.pem", "secrets/*.key", "src/*.env*"]
+        is_prot, match = is_protected_path("certs/priv.pem", extra_protected=extra)
+        self.assertTrue(is_prot)
+        self.assertEqual(match, "*.pem")
+
+        is_prot, match = is_protected_path("secrets/app.key", extra_protected=extra)
+        self.assertTrue(is_prot)
+        self.assertEqual(match, "secrets/*.key")
+
+        # 5. check_path_overlap_with_protected with globs
+        conflicts = check_path_overlap_with_protected(["certs/cert.pem"], extra_protected=["*.pem"])
+        self.assertTrue(len(conflicts) > 0)
 
 
 if __name__ == "__main__":

@@ -234,20 +234,66 @@ def handle_jsonrpc_message(
     }
 
 
+class MCPServer:
+    """Zero-dependency stdio Model Context Protocol (MCP) server."""
+
+    def __init__(self, coord: OrchestratorCoordinator) -> None:
+        self.coord = coord
+
+    def run_stdio(self, in_stream: Any = None, out_stream: Any = None) -> None:
+        """Run the stdio JSON-RPC 2.0 loop supporting single-line, multi-line, and Content-Length framed JSON."""
+        inp = in_stream or sys.stdin
+        out = out_stream or sys.stdout
+
+        buf = ""
+        while True:
+            line = inp.readline()
+            if not line:
+                break
+
+            stripped = line.strip()
+            # Handle HTTP-style Content-Length header framing if present
+            if stripped.lower().startswith("content-length:"):
+                try:
+                    length = int(stripped.split(":", 1)[1].strip())
+                    while True:
+                        next_line = inp.readline()
+                        if not next_line or next_line.strip() == "":
+                            break
+                    body = inp.read(length)
+                    if body:
+                        msg = json.loads(body)
+                        resp = handle_jsonrpc_message(self.coord, msg)
+                        if resp is not None:
+                            out.write(json.dumps(resp, ensure_ascii=False) + "\n")
+                            out.flush()
+                except Exception:
+                    pass
+                buf = ""
+                continue
+
+            buf += line
+            candidate = buf.strip()
+            if not candidate:
+                buf = ""
+                continue
+
+            try:
+                msg = json.loads(candidate)
+                buf = ""
+                resp = handle_jsonrpc_message(self.coord, msg)
+                if resp is not None:
+                    out.write(json.dumps(resp, ensure_ascii=False) + "\n")
+                    out.flush()
+            except json.JSONDecodeError:
+                # Incomplete JSON (multi-line pretty print or chunked); continue accumulating buffer
+                continue
+
+
 def handle_mcp_serve(args: argparse.Namespace, coord: OrchestratorCoordinator) -> None:
     """Run the stdio JSON-RPC 2.0 loop."""
-    for line in sys.stdin:
-        raw = line.strip()
-        if not raw or raw.lower().startswith("content-length:"):
-            continue
-        try:
-            msg = json.loads(raw)
-        except json.JSONDecodeError:
-            continue
-        resp = handle_jsonrpc_message(coord, msg)
-        if resp is not None:
-            sys.stdout.write(json.dumps(resp, ensure_ascii=False) + "\n")
-            sys.stdout.flush()
+    server = MCPServer(coord)
+    server.run_stdio()
 
 
 def register_mcp_subparser(subparsers: argparse._SubParsersAction[Any]) -> None:

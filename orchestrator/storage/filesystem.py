@@ -157,9 +157,16 @@ class FileSystemStorage:
         return self.read_json(self.plans_dir / f"{workflow_id}.json")
 
     def save_run(self, run_id: str, run_data: dict[str, Any]) -> Path:
-        path = self.runs_dir / f"run-{run_id}.json"
+        filename = f"{run_id}.json" if run_id.startswith("run-") else f"run-{run_id}.json"
+        path = self.runs_dir / filename
         self.atomic_write_json(path, run_data)
         return path
 
     def load_run(self, run_id: str) -> dict[str, Any] | None:
-        return self.read_json(self.runs_dir / f"run-{run_id}.json")
+        filename = f"{run_id}.json" if run_id.startswith("run-") else f"run-{run_id}.json"
+        res = self.read_json(self.runs_dir / filename)
+        if res is not None:
+            return res
+        if run_id.startswith("run-"):
+            return self.read_json(self.runs_dir / f"run-{run_id}.json")
+        return None

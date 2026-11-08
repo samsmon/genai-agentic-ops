@@ -9,8 +9,39 @@ from __future__ import annotations
 
 import datetime
 import json
+import sys
+import time
 from pathlib import Path
 from typing import Any
+
+
+def _lock_file(f: Any) -> None:
+    if sys.platform == "win32":
+        import msvcrt
+        try:
+            f.seek(0, 0)
+            msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
+        except OSError:
+            pass
+    else:
+        import fcntl
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+
+
+def _unlock_file(f: Any) -> None:
+    if sys.platform == "win32":
+        import msvcrt
+        try:
+            f.seek(0, 0)
+            msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+        except OSError:
+            pass
+    else:
+        import fcntl
+        try:
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        except OSError:
+            pass
 
 
 class TelemetryLedger:
@@ -67,8 +98,27 @@ class TelemetryLedger:
         }
 
         self.runs_dir.mkdir(parents=True, exist_ok=True)
-        with open(self.metrics_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        line = json.dumps(entry, ensure_ascii=False) + "\n"
+        max_retries = 10
+        delay = 0.05
+        for attempt in range(max_retries):
+            try:
+                with open(self.metrics_file, "a+", encoding="utf-8") as f:
+                    _lock_file(f)
+                    try:
+                        f.seek(0, 2)
+                        f.write(line)
+                        f.flush()
+                    finally:
+                        _unlock_file(f)
+                break
+            except OSError:
+                if attempt == max_retries - 1:
+                    with open(self.metrics_file, "a", encoding="utf-8") as f:
+                        f.write(line)
+                        f.flush()
+                else:
+                    time.sleep(delay)
 
         return entry
 

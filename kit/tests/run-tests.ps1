@@ -16,9 +16,17 @@ foreach ($f in (Get-ChildItem -LiteralPath $PSScriptRoot -Filter test_*.py | Sor
   $o = & python -B -I $f.FullName 2>&1
   if ($LASTEXITCODE -eq 0) { Write-Output "OK     $($f.BaseName)" } else { Write-Output "FAIL   $($f.BaseName)"; ($o | Where-Object { $_ -match '^FAIL' }) | ForEach-Object { Write-Output "         $_" }; $bad++ }
 }
-# bash.exe in System32 is often the WSL stub with no distribution, so probe each candidate
+# bash.exe in System32 is often the WSL stub with no distribution, so probe Git Bash first
 $bash = $null
-$cands = @(Get-Command bash -All -ErrorAction SilentlyContinue | ForEach-Object Source) + @("$env:ProgramFiles\Git\bin\bash.exe")
+$gitBash = @(
+  "$env:ProgramFiles\Git\bin\bash.exe",
+  "${env:ProgramFiles(x86)}\Git\bin\bash.exe",
+  "$env:LOCALAPPDATA\Programs\Git\bin\bash.exe"
+)
+$pathCands = @(Get-Command bash -All -ErrorAction SilentlyContinue | ForEach-Object Source | Where-Object {
+  $_ -and ($_ -notmatch '(?i)[\\/]System32[\\/]bash\.exe$') -and ($_ -notmatch '(?i)WindowsApps')
+})
+$cands = $gitBash + $pathCands
 foreach ($c in $cands) {
   if ($c -and (Test-Path -LiteralPath $c)) {
     $probe = & $c -c 'echo ok' 2>$null

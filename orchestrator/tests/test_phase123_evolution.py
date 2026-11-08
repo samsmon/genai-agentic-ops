@@ -23,12 +23,13 @@ import json
 import os
 import sys
 import tempfile
+import threading
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 
 from orchestrator.cli.main import main
-from orchestrator.cli.mcp_server import handle_jsonrpc_message
+from orchestrator.cli.mcp_server import MCPServer, handle_jsonrpc_message
 from orchestrator.cli.watch_cmd import render_dashboard
 from orchestrator.core.coordinator import OrchestratorCoordinator
 from orchestrator.core.runner import TaskRunner
@@ -220,6 +221,71 @@ class TestPhase123Evolution(unittest.TestCase):
         self.assertIn("genai-agentic-ops Live Dashboard", dash_out)
         self.assertIn("[LOCK]", dash_out)
         self.assertIn("[TELEMETRY]", dash_out)
+
+    def test_concurrent_telemetry_recording(self) -> None:
+        """Verify parallel writes to metrics.jsonl do not interleave or corrupt JSON lines."""
+        ledger = self.coord.telemetry
+        num_threads = 20
+        errors: list[Exception] = []
+
+        def worker(idx: int) -> None:
+            try:
+                ledger.record_run_metrics(
+                    run_id=f"run-concurrent-{idx}",
+                    task_id=f"task-concurrent-{idx}",
+                    workflow_id="wf-concurrent",
+                    runtime="antigravity",
+                    role="developer",
+                    duration_ms=100 + idx,
+                    prompt_text=f"Prompt for worker {idx}",
+                    stdout_text=f"Output from worker {idx}",
+                )
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(num_threads)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        self.assertEqual(len(errors), 0, f"Thread errors: {errors}")
+        entries = ledger.list_entries(workflow_id="wf-concurrent")
+        self.assertEqual(len(entries), num_threads)
+        run_ids = {e["run_id"] for e in entries}
+        expected_run_ids = {f"run-concurrent-{i}" for i in range(num_threads)}
+        self.assertEqual(run_ids, expected_run_ids)
+
+    def test_mcp_server_multiline_and_streaming(self) -> None:
+        """Verify MCPServer.run_stdio handles multi-line JSON and Content-Length framed input."""
+        server = MCPServer(self.coord)
+
+        # 1. Multi-line pretty-printed JSON-RPC
+        multiline_req = (
+            "{\n"
+            '  "jsonrpc": "2.0",\n'
+            '  "id": "req-multi",\n'
+            '  "method": "ping"\n'
+            "}\n"
+        )
+        inp = io.StringIO(multiline_req)
+        out = io.StringIO()
+        server.run_stdio(in_stream=inp, out_stream=out)
+        out.seek(0)
+        resp = json.loads(out.read().strip())
+        self.assertEqual(resp["id"], "req-multi")
+        self.assertEqual(resp["jsonrpc"], "2.0")
+
+        # 2. Content-Length framed JSON-RPC
+        payload = json.dumps({"jsonrpc": "2.0", "id": "req-cl", "method": "initialize"})
+        cl_req = f"Content-Length: {len(payload)}\r\n\r\n{payload}"
+        inp_cl = io.StringIO(cl_req)
+        out_cl = io.StringIO()
+        server.run_stdio(in_stream=inp_cl, out_stream=out_cl)
+        out_cl.seek(0)
+        resp_cl = json.loads(out_cl.read().strip())
+        self.assertEqual(resp_cl["id"], "req-cl")
+        self.assertEqual(resp_cl["result"]["serverInfo"]["name"], "genai-agentic-ops")
 
 
 if __name__ == "__main__":
