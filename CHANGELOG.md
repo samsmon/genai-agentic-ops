@@ -1,5 +1,8 @@
 # Changelog
 
+## v2.7.0 - 2026-11-10
+- **Security audit skill (mandatory gate)**: vendored `cloudflare/security-audit-skill` (MIT, commit `c1c8a8c1471069fb0e188eeaff69b8e8db6564a8`) unchanged under `kit/skills/security-audit/` with `LICENSE` and `UPSTREAM.md`, distributed to Claude Code and Antigravity through `kit/MANIFEST`. New rules section 14 requires a scoped security audit before merging or releasing changes that touch auth, secrets, network exposure, IAM or dependencies; unresolved confirmed findings block the merge. The Part B block changed (marker stays `v2`), so a project bootstrapped earlier needs its block refreshed.
+
 ## v2.6.0 - 2026-11-08 (commit `7226d03db147db12f6047cf3f4d0fb31ca76b251`)
 - **Workspace Quarantine & Automated Forensics (`WorkspaceQuarantine`)**: Added pre-task byte-level snapshotting (`MAX_BACKUP_FILE_BYTES` 5MB safety cap) under `orchestrator/governance/quarantine.py`. Out-of-scope file modifications are automatically rolled back, rogue files unlinked with directory cleanup, and forensic artifacts archived to `.agentic/runs/<run_id>/quarantine/files/` alongside a standardized `manifest.json`.
 - **Execution Telemetry Ledger (`TelemetryLedger`)**: Added structured telemetry tracking under `orchestrator/governance/metrics.py`. Records run duration, byte counts, heuristic token calibration (~4 chars/token), and verification rates to `.agentic/runs/metrics.jsonl`. Hardened with cross-platform advisory OS file locking (`msvcrt.locking` on Windows, `fcntl.flock` on Unix) to prevent race conditions during parallel DAG runs.

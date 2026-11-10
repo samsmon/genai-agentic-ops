@@ -145,6 +145,10 @@ Without explicit confirmation, NEVER:
 - Do NOT suggest for one-off work, fast-changing procedures, or when the build costs more than the next five uses would save.
 - A suggestion is not an approval. Building it is a change (section 1) and, if big, a long task (section 2).
 - If the user declines, append one line to `docs/HARNESS_DECLINED.md` (date, what, why). Grep that file before suggesting; never repeat a declined suggestion unless the user asks.
+
+### 14. Security audit before merge or release (mandatory)
+- Before merging or releasing a change touching auth, secrets, network exposure, IAM or dependencies, run the `security-audit` skill scoped to that change and report the result; skipping needs the user's explicit yes. Full workflow only for a first release or on request.
+- Unresolved `confirmed` findings block the merge until the user decides; fixing them needs section 1 approval.
 <!-- END genai-agentic-ops v2 -->
 ```
 
