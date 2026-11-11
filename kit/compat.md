@@ -27,3 +27,4 @@ What the adapters in `adapters/` and `claude/` are based on. All pages were read
 - **Installed layout and `__pycache__`.** Every hook command uses `python -B -I`, so a hook run never writes bytecode into a folder that the overlay or the project tracks.
 - **OpenCode on Bun.** The plugin imports `node:child_process`, which Bun provides. The kit test runs it on Node; it has not run on OpenCode's Bun.
 - **Not covered:** Roo, Windsurf, Gemini CLI, and anything else. The git hooks, scripts and written rules apply to them unchanged.
+- **`python` on PATH.** Every shipped hook command starts with `python`. Debian and Ubuntu ship only `python3` unless `python-is-python3` is installed, and macOS has no `python` by default, so on those systems the hooks fail to start (found by the Linux test run on 2026-11-11). Install a `python` shim or edit the commands to `python3`. The tests substitute the running interpreter, so they do not catch this.

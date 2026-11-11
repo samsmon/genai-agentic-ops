@@ -29,6 +29,19 @@ def cases(tool):
         return json.load(f)["cases"]
 
 
+def _argv(cmd):
+    """Split a hook command on spaces (as the IDE does) and run it with this interpreter.
+
+    The shipped commands start with `python`; Debian and Ubuntu ship only `python3`,
+    so the test substitutes the running interpreter. The product limitation (hooks
+    need a `python` on PATH) is documented in kit/compat.md.
+    """
+    parts = cmd.split(" ")
+    if parts and parts[0] in ("python", "python3"):
+        parts[0] = sys.executable
+    return parts
+
+
 def run(script, payload, env=None):
     e = dict(os.environ)
     e.pop("AGENTIC_OPS_POLICY", None)
@@ -116,7 +129,7 @@ with tempfile.TemporaryDirectory() as proj:
         return json.dumps({"toolCall": {"name": "run_command", "args": {"CommandLine": c}}})
 
     for label, c, want in (("force push", "git push --force origin main", "deny"), ("git status", "git status", "allow"), ("amend", "git commit --amend --allow-empty -m x", "allow")):
-        r = subprocess.run(hook.split(" "), cwd=os.path.join(proj, ".agents"), input=payload(c), capture_output=True, text=True, env=env)
+        r = subprocess.run(_argv(hook), cwd=os.path.join(proj, ".agents"), input=payload(c), capture_output=True, text=True, env=env)
         try:
             got = json.loads(r.stdout).get("decision")
         except ValueError:
@@ -126,7 +139,7 @@ with tempfile.TemporaryDirectory() as proj:
     expect("antigravity hook run leaves no __pycache__", not left)
     # the quoted one-liner of v2.3.0 and v2.3.1 breaks under a runner that splits on spaces (kept as a regression check)
     bad_cmd = 'python -B -I -c "import os,runpy;p=next((q for q in (\'hooks/guard.py\',) if os.path.isfile(q)),None);p and runpy.run_path(p)"'
-    r = subprocess.run(bad_cmd.split(" "), cwd=os.path.join(proj, ".agents"), input=payload("git status"), capture_output=True, text=True, env=env)
+    r = subprocess.run(_argv(bad_cmd), cwd=os.path.join(proj, ".agents"), input=payload("git status"), capture_output=True, text=True, env=env)
     expect("regression: a command with nested quotes fails when split on spaces (why the shipped command has none)", r.returncode != 0)
 
 # --- installed layout: core in scripts/agentic-ops/core, adapter in the tool's own folder

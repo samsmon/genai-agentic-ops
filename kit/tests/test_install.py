@@ -17,6 +17,12 @@ DOCTOR = os.path.join(KIT, "scripts", "doctor.py")
 ENV = dict(os.environ, GIT_AUTHOR_NAME="tester", GIT_AUTHOR_EMAIL="t@example.test",
            GIT_COMMITTER_NAME="tester", GIT_COMMITTER_EMAIL="t@example.test", PYTHONDONTWRITEBYTECODE="1")
 ENV.pop("AGENTIC_OPS_POLICY", None)
+# Hook commands start with `python`. Debian and Ubuntu ship only `python3`, so give the child processes a `python`
+# that is this interpreter (doctor correctly reports FAIL without one; see kit/compat.md).
+if not shutil.which("python"):
+    _shim = tempfile.mkdtemp(prefix="agentic-pyshim-")
+    os.symlink(sys.executable, os.path.join(_shim, "python"))
+    ENV["PATH"] = _shim + os.pathsep + ENV.get("PATH", "")
 fail = 0
 
 
