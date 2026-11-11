@@ -2,6 +2,8 @@
 # Tests for the sh versions: start-brief.sh, wrap-check.sh, handoff-check.sh, precommit-check.sh, commit-msg.
 # Run: bash kit/tests/scripts.tests.sh   (needs git; uses temporary repositories)
 . "$(dirname "$0")/layout.sh"
+# the scripts read these from the environment; a host that sets them (a project with its own heading) must not change the results
+unset STATE_FILE LOG_DIR REVIEW_HEADING DISCUSSION_DIR
 BASE=$(mktemp -d)
 trap 'rm -rf "$BASE"' EXIT
 export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@t
