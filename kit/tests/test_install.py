@@ -312,6 +312,37 @@ try:
         expect(f"hidden --shell {shell_name}: prints the Antigravity workspace-root reminder", "Open the repository root itself" in r.stdout)
         r2 = inst(ph, "--tools", "antigravity", "--modules", "guard,githooks,scripts", "--shell", shell_name, "--visibility", "hidden", "--apply")
         expect(f"hidden --shell {shell_name}: running again changes nothing", r2.returncode == 0 and "Nothing to do" in r2.stdout)
+    # ---- --python python3 rewrites the hook commands (hosts that ship only python3)
+    pp = mkproject(BASE, "py3")
+    r = inst(pp, "--tools", "antigravity,codex,claude", "--modules", "guard", "--visibility", "visible", "--python", "python3", "--apply")
+    expect("--python python3: install exit 0 and says so", r.returncode == 0 and "hook commands use python3" in r.stdout)
+
+    def cmds(rel, key, base=None):
+        with open(os.path.join(base or pp, *rel.split("/")), encoding="utf-8") as f:
+            found = []
+            def walk(o):
+                if isinstance(o, dict):
+                    for k, v in o.items():
+                        if k == key and isinstance(v, str):
+                            found.append(v)
+                        else:
+                            walk(v)
+                elif isinstance(o, list):
+                    for x in o:
+                        walk(x)
+            walk(json.load(f))
+            return found
+    for rel in (".agents/hooks.json", ".codex/hooks.json", ".claude/settings.json"):
+        c = cmds(rel, "command")
+        expect(f"--python python3: {rel} commands start with python3", bool(c) and all(x.startswith("python3 ") for x in c))
+    cw = cmds(".codex/hooks.json", "commandWindows")
+    expect("--python python3: commandWindows is left as python", bool(cw) and all(x.startswith("python ") for x in cw))
+    r = inst(pp, "--tools", "antigravity,codex,claude", "--modules", "guard", "--visibility", "visible", "--python", "python3", "--apply")
+    expect("--python python3: running again changes nothing", r.returncode == 0 and "Nothing to do" in r.stdout)
+    pd = mkproject(BASE, "py-default")
+    r = inst(pd, "--tools", "antigravity", "--modules", "guard", "--visibility", "visible", "--python", "python", "--apply")
+    c = cmds(".agents/hooks.json", "command", pd)
+    expect("--python python: commands stay python", r.returncode == 0 and bool(c) and all(x.startswith("python ") for x in c))
 finally:
     shutil.rmtree(BASE, ignore_errors=True)
 

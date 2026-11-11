@@ -20,6 +20,7 @@ the AGENTS.md markers are damaged (nothing is written) | 5 hidden-mode sync stop
 import argparse
 import json
 import os
+import shutil
 import sys
 
 try:
@@ -75,6 +76,27 @@ POINTER_LINE = "Read AGENTS.md for the project rules."
 RECEIPT = "scripts/agentic-ops/INSTALLED.json"
 
 
+def pick_python(choice):
+    """Interpreter name for the hook commands. auto: python if it is on PATH, else python3 if that is, else python."""
+    if choice != "auto":
+        return choice
+    if shutil.which("python"):
+        return "python"
+    return "python3" if shutil.which("python3") else "python"
+
+
+def use_python3(data):
+    """Rewrite every hook "command" that starts with `python ` to `python3 ` (commandWindows is left alone)."""
+    def walk(o):
+        if isinstance(o, dict):
+            return {k: ("python3 " + v[7:] if k == "command" and isinstance(v, str) and v.startswith("python ") else walk(v))
+                    for k, v in o.items()}
+        if isinstance(o, list):
+            return [walk(x) for x in o]
+        return o
+    return dumps(walk(json.loads(data.decode("utf-8")))).encode("utf-8")
+
+
 def build_plan(a, src):
     project = os.path.abspath(a.project)
     rc, _ = git(project, "rev-parse", "--is-inside-work-tree")
@@ -113,6 +135,8 @@ def build_plan(a, src):
 
     for e in entries:
         data = src.kit(e["src"])
+        if e["mode"] == "merge-json" and pick_python(a.python) == "python3":
+            data = use_python3(data)
         dst = os.path.join(project, *e["dst"].split("/"))
         cur = None
         if os.path.isfile(dst):
@@ -211,6 +235,8 @@ def main(argv=None):
     ap.add_argument("--remote", default="", help="overlay remote (URL or name) for hidden mode; default the project's origin")
     ap.add_argument("--kit-dir", default="", help="local kit folder (default: the folder of this file)")
     ap.add_argument("--pin", default="", help="commit sha to download the kit from")
+    ap.add_argument("--python", choices=("auto", "python", "python3"), default="auto",
+                    help="interpreter in the hook commands; auto uses python3 when there is no python on PATH")
     ap.add_argument("--project", default=os.getcwd())
     ap.add_argument("--apply", action="store_true", help="write the files (default: dry run)")
     ap.add_argument("--force", action="store_true", help="overwrite existing files that differ")
@@ -229,6 +255,8 @@ def main(argv=None):
         project, plan = build_plan(a, src)
         print(f"genai-agentic-ops install ({'APPLY' if a.apply else 'dry run'}) into {project}")
         print(f"  tools={a.tools or '-'} modules={a.modules} shell={a.shell} visibility={a.visibility} policy={a.policy} source={src.label}")
+        if pick_python(a.python) == "python3":
+            print("  note: hook commands use python3 (no `python` on PATH, or --python python3)")
         print_plan(plan, a.apply)
         if "antigravity" in (a.tools or "").split(","):
             print("  note: Antigravity reads .agents/hooks.json from the folder opened as the workspace. "
