@@ -10,9 +10,12 @@ from __future__ import annotations
 import datetime
 import json
 import sys
-import time
+import threading
 from pathlib import Path
 from typing import Any
+
+
+_THREAD_LOCK = threading.Lock()
 
 
 def _lock_file(f: Any) -> None:
@@ -99,26 +102,19 @@ class TelemetryLedger:
 
         self.runs_dir.mkdir(parents=True, exist_ok=True)
         line = json.dumps(entry, ensure_ascii=False) + "\n"
-        max_retries = 10
-        delay = 0.05
-        for attempt in range(max_retries):
-            try:
-                with open(self.metrics_file, "a+", encoding="utf-8") as f:
-                    _lock_file(f)
-                    try:
-                        f.seek(0, 2)
-                        f.write(line)
-                        f.flush()
-                    finally:
-                        _unlock_file(f)
-                break
-            except OSError:
-                if attempt == max_retries - 1:
+        # Serialize writers with a thread lock (same process) plus a lock on a
+        # dedicated lock file (other processes). Locking the data file itself
+        # fails on Windows: a locked byte also blocks other handles' writes.
+        lock_path = self.metrics_file.with_name(self.metrics_file.name + ".lock")
+        with _THREAD_LOCK:
+            with open(lock_path, "a+", encoding="utf-8") as lock_f:
+                _lock_file(lock_f)
+                try:
                     with open(self.metrics_file, "a", encoding="utf-8") as f:
                         f.write(line)
                         f.flush()
-                else:
-                    time.sleep(delay)
+                finally:
+                    _unlock_file(lock_f)
 
         return entry
 
