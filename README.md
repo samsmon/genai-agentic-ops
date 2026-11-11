@@ -5,6 +5,7 @@
 
 A reusable ruleset for running several AI coding agents in one repository without them stepping on each other, or on you.
 
+[![CI](https://github.com/samsmon/genai-agentic-ops/actions/workflows/ci.yml/badge.svg)](https://github.com/samsmon/genai-agentic-ops/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/badge/version-v2.6.0-blue?style=flat-square)](#versions-and-pins)
 [![Rules](https://img.shields.io/badge/rules-AGENTS.md-informational?style=flat-square)](RULES.md)
 [![Kit](https://img.shields.io/badge/kit-Python%203%20%7C%20sh%20%7C%20PowerShell-4c566a?style=flat-square)](kit/README.md)

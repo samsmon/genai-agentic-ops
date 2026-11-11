@@ -140,6 +140,23 @@ Cross-tool layers that need no hook support: the git hooks (`githooks/`), the sc
 
 Under `user-only-git` the agent cannot commit, so uncommitted changes are reported as information rather than failures (`-GitPolicy user-only-git`). Under `agent-commits` (default; full git control) unpushed commits and uncommitted tracked changes fail. In hidden mode `wrap-check` adds an `OVERLAY` line with the same rule for the agentic files: uncommitted or unpushed overlay changes fail under `agent-commits` and are information under `user-only-git`.
 
+## Where the tests have run
+
+The CI workflow runs the suites below on every push. Last green run: commit `8437139`, 2026-11-11, [run 43009912600](https://github.com/samsmon/genai-agentic-ops/actions/runs/43009912600).
+
+| Suite | Linux (Ubuntu) | macOS | Windows |
+|---|---|---|---|
+| Orchestrator unit tests | Yes | Yes | Yes |
+| Kit Python suites (`test_*.py`) | Yes | Yes | Yes |
+| Kit sh suites (`*.tests.sh`) | Yes | Yes | Yes (Git Bash) |
+| Kit PowerShell suites (`*.tests.ps1`) | n/a | n/a | Yes |
+| OpenCode plugin test (Node, fixture inputs) | Yes | Yes | Yes |
+| security-audit validator tests | Yes | Yes | No: the validator refuses input where OS no-follow protection is unavailable |
+
+What this does not show: no adapter has run inside Codex, Cursor or OpenCode (see the matrix above), and nothing measures whether the rules reduce conflicts between agents in practice. The kit has been used in a few repositories of its author only.
+
+The first cross-platform run (WSL, 2026-11-11) found real bugs that Windows-only testing had hidden: shell scripts and git hooks stored without the executable bit (git ignored the hooks on Linux and macOS), a lost telemetry write under concurrency, and tests that assumed a `python` command. They are fixed in `401b742`, `9ee992f` and `a0fb7b1`. The hook commands still need a `python` on PATH; see `compat.md`.
+
 ## Tests
 
 ```
