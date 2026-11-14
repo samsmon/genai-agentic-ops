@@ -1,5 +1,6 @@
 # Called by .githooks/pre-commit. No model; silent when it passes.
-# Blocks: large or media/binary files, and likely secrets in added lines (values are never printed).
+# Blocks: out-of-sync commands/workflows, large or media/binary files,
+#         source files > 500 lines, and likely secrets in added lines (values are never printed).
 # Warns: rules file larger than -MaxRulesBytes (keep it small; see the token discipline rule), and over 24,000 bytes (Antigravity limit).
 # Overrides, on the user's say-so only: ALLOW_BIG_FILES=1, ALLOW_SECRET_PATTERN=1, ALLOW_LARGE_SOURCE=1.
 # SECRET_SCAN_SKIP='path/pattern/*,other/*' skips the secret scan for those paths (-like patterns).
@@ -14,6 +15,26 @@ if (-not $Root) { $Root = (& git rev-parse --show-toplevel 2>$null); if (-not $R
 if ($StagedFile -and (Test-Path -LiteralPath $StagedFile)) { $Staged = (Get-Content -LiteralPath $StagedFile -Raw -Encoding UTF8) }
 $files = @($Staged -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 $rc = 0
+
+if ($files | Where-Object { $_ -like '.claude/commands/*' -or $_ -like '.agent/workflows/*' }) {
+  $cmdDir = Join-Path $Root '.claude\commands'
+  $wfDir = Join-Path $Root '.agent\workflows'
+  $syncScript = Join-Path $Root 'scripts\sync-agent-workflows.ps1'
+  if (-not (Test-Path -LiteralPath $syncScript)) {
+    $syncScript = Join-Path (Split-Path $PSScriptRoot -Parent) 'sync-agent-workflows.ps1'
+  }
+  if (-not (Test-Path -LiteralPath $syncScript)) {
+    $syncScript = Join-Path $Root 'scripts\agentic-ops\sync-agent-workflows.ps1'
+  }
+  if ((Test-Path -LiteralPath $syncScript) -and (Test-Path -LiteralPath $cmdDir) -and (Test-Path -LiteralPath $wfDir)) {
+    $o = & powershell -NoProfile -File $syncScript -Check -Source $cmdDir -Dest $wfDir
+    if ($LASTEXITCODE -ne 0) {
+      $o | ForEach-Object { Write-Output $_ }
+      Write-Output 'COMMIT REJECTED: commands/workflows pair is out of sync (argument line may differ).'
+      $rc = 1
+    }
+  }
+}
 
 if ($files -contains $RulesFile) {
   $rp = Join-Path $Root $RulesFile
@@ -39,7 +60,7 @@ if ($files.Count -gt 0 -and (Test-Path -LiteralPath (Join-Path $Root '.git'))) {
     }
   }
   $maxSourceLines = 500
-  $sourceExt = '\.(html|htm|css|js|jsx|ts|tsx|vue|svelte|py|go|rs|php|rb|java|c|cpp|h|cs)$'
+  $sourceExt = '\.(html|htm|css|js|jsx|ts|tsx|vue|svelte|py|go|rs|php|rb|java|c|cpp|h|cs|ps1|sh)$'
   $vendorOrMin = '(\.min\.|\.bundle\.|vendor\/|vendor\\|node_modules\/|node_modules\\)'
   foreach ($f in $files) {
     $fp = Join-Path $Root $f
@@ -54,14 +75,18 @@ if ($files.Count -gt 0 -and (Test-Path -LiteralPath (Join-Path $Root '.git'))) {
   }
   $pats = [ordered]@{
     'Anthropic key'        = 'sk-ant-[A-Za-z0-9_-]{20,}'
+    'Secret sk- key'       = '\bsk-[A-Za-z0-9_-]{20,}'
+    'Voyage API key'       = '\bpa-[A-Za-z0-9_-]{35,}'
     'AWS access key id'    = 'AKIA[0-9A-Z]{16}'
     'private key'          = '-----BEGIN [A-Z ]*PRIVATE KEY-----'
     'GitHub token'         = 'gh[pousr]_[A-Za-z0-9]{30,}'
     'Slack token'          = 'xox[baprs]-[A-Za-z0-9-]{10,}'
     'Google API key'       = 'AIza[0-9A-Za-z_-]{35}'
+    'Bearer token'         = 'Bearer\s+[A-Za-z0-9._-]{20,}'
+    'Telegram bot token'   = '\b\d{8,10}:[A-Za-z0-9_-]{35}\b'
     'literal secret value' = '(?i)(api[_-]?key|secret|passwd|password|token)\s*[:=]\s*["'']?(?=[A-Za-z0-9/+_.-]{24,})(?=[A-Za-z0-9/+_.-]*[A-Za-z])(?=[A-Za-z0-9/+_.-]*\d)[A-Za-z0-9/+_.-]{24,}'
   }
-  $skip = @(([string]$env:SECRET_SCAN_SKIP) -split ',' | Where-Object { $_ })
+  $skip = @('knowledge/secrets/*') + @(([string]$env:SECRET_SCAN_SKIP) -split ',' | Where-Object { $_ })
   $diff = & git -C $Root -c core.quotepath=off diff --cached -U0 --no-color 2>$null
   $cur = ''; $hits = @{}
   foreach ($l in $diff) {
@@ -71,12 +96,12 @@ if ($files.Count -gt 0 -and (Test-Path -LiteralPath (Join-Path $Root '.git'))) {
     foreach ($s in $skip) { if ($cur -like $s) { $skipped = $true } }
     if ($skipped) { continue }
     foreach ($k in $pats.Keys) {
-      if ($l -match $pats[$k]) { $hits["$cur | $k"] = 1 }
+      if ($l -cmatch $pats[$k]) { $hits["$cur | $k"] = 1 }
     }
   }
   if ($hits.Count -gt 0) {
     foreach ($h in ($hits.Keys | Sort-Object)) { Write-Output "COMMIT REJECTED: possible secret in an added line: $h (value not shown)" }
-    Write-Output 'Remove the value and keep it outside the repo. False positive is the user''s call: rerun with ALLOW_SECRET_PATTERN=1.'
+    Write-Output 'Remove the value and keep it outside the repo (or in knowledge/secrets/ for low-risk keys). False positive is the user''s call: rerun with ALLOW_SECRET_PATTERN=1.'
     if ($env:ALLOW_SECRET_PATTERN -ne '1') { $rc = 1 }
   }
 }

@@ -30,34 +30,52 @@ ASK_DESTRUCTIVE = True
 
 ALLOW, ASK, DENY = "allow", "ask", "deny"
 
+_BYPASS_VARS = (
+    r"(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT|ALLOW_SECRET_PATTERN"
+    r"|SECRET_SCAN_SKIP|ALLOW_BIG_FILES|ALLOW_LARGE_SOURCE)"
+)
 TRAILER = re.compile(r"co-authored-by\s*:|signed-off-by\s*:|generated-by\s*:|generated with|\U0001F916", re.I)
 BYPASS = re.compile(
-    r"\b(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)\s*="
-    r"|\$env:(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)\b|\bEnv:(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)\b"
-    r"|\bSet-Item\b[^\n]*\b(?:env:|env\\|env/)?(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)\b"
-    r"|\b(?:export|setenv)\s+(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)\b"
-    r"|SetEnvironmentVariable\([^)]*(?:ALLOW_AGENT_TRAILER|SKIP_COMMIT_FORMAT)",
+    rf"\b{_BYPASS_VARS}\s*="
+    rf"|\$env:{_BYPASS_VARS}\b|\bEnv:{_BYPASS_VARS}\b"
+    rf"|\bSet-Item\b[^\n]*\b(?:env:|env\\|env/)?{_BYPASS_VARS}\b"
+    rf"|\b(?:export|setenv)\s+{_BYPASS_VARS}\b"
+    rf"|SetEnvironmentVariable\([^)]*{_BYPASS_VARS}",
     re.I,
 )
 IDENTITY = re.compile(
     r"--author\b|\bGIT_(AUTHOR|COMMITTER)_(NAME|EMAIL)\b|-c\s+user\.(name|email)\b"
-    r"|\bgit\s+config\b[^\n]*\buser\.(name|email)\b",
+    r"|\bgit\b[^\n;|&]*\bconfig\b"
+    r"(?!(?![^\n;|&]*\s(?:--replace-all|--add|--unset|--unset-all)\b)"
+    r"[^\n;|&]*\s(?:--get|--get-all|--list)(?=\s|$))"
+    r"[^\n;|&]*\buser\.(name|email)\b",
+    re.I,
+)
+SLEEP = re.compile(
+    r"\b(?:while|until)\b[^\n]*\b(?:sleep|Start-Sleep)\b"
+    r"|\b(?:sleep\s+\d+|Start-Sleep\b[^\n]*)\s*(?:&&|;)\s*\S"
+    r"|(?:^|[;|&{(]\s*)Start-Sleep\b"
+    r"|\bStart-Sleep\s+(?:-(?:Seconds|Milliseconds|s|m)\b|\d+)",
     re.I,
 )
 DESTRUCTIVE = re.compile(
     r"\bgit\s+push\b[^\n]*(--force\b|--force-with-lease|\s-f\b|--delete\b)"
     r"|\bgit\s+reset\s+--hard\b|\bgit\s+clean\s+-[a-z]*f|\bgit\s+branch\s+(-D\b|--delete\b)"
     r"|\bgit\s+tag\s+(-d\b|--delete\b)"
+    r"|\bgit\b(?:\s+-C\s+\S+)?\s+restore\b[^\n;|&]*\s\.(?=\s|$|[;|&])"
+    r"|\bgit\b(?:\s+-C\s+\S+)?\s+checkout\b[^\n;|&]*\s--\s+\.(?=\s|$|[;|&])"
     r"|\brm\s+-[a-z]*r[a-z]*f|\brm\s+-[a-z]*f[a-z]*r"
-    r"|\bRemove-Item\b[^\n]*(?:-Recurse[^\n]*-Force|-Force[^\n]*-Recurse)",
+    r"|\b(?:rmdir|rd)\b[^\n;|&]*(?:/s(?=\s|/|$)[^\n;|&]*/q(?=\s|/|$)|/q(?=\s|/|$)[^\n;|&]*/s(?=\s|/|$))"
+    r"|\bRemove-Item\b[^\n;|&]*(?:-(?:r|rec|recurse)\b[^\n;|&]*-(?:fo|for|forc|force)\b|-(?:fo|for|forc|force)\b[^\n;|&]*-(?:r|rec|recurse)\b)",
     re.I,
 )
 
 
 def check_command(cmd):
     if BLOCK_HOOK_BYPASS and BYPASS.search(cmd):
-        return DENY, ("BLOCKED: ALLOW_AGENT_TRAILER and SKIP_COMMIT_FORMAT are escape hatches for the user's own terminal; agents must not set them "
-                      f"({RULES_DOC}). Fix the commit message so the hook passes.")
+        return DENY, ("BLOCKED: hook override variables (ALLOW_AGENT_TRAILER, SKIP_COMMIT_FORMAT, ALLOW_SECRET_PATTERN, "
+                      "SECRET_SCAN_SKIP, ALLOW_BIG_FILES, ALLOW_LARGE_SOURCE) are escape hatches for the user's own terminal; "
+                      f"agents must not set them ({RULES_DOC}). Fix the underlying check so the hook passes.")
     is_commit = re.search(r"\bgit\b[^\n]*\bcommit\b", cmd)
     is_pr = re.search(r"\bgh\s+(pr|issue|release)\s+(create|edit|comment|review)\b", cmd)
     if BLOCK_AGENT_TRAILERS and (is_commit or is_pr) and TRAILER.search(cmd):
@@ -68,10 +86,10 @@ def check_command(cmd):
                       f"({RULES_DOC}).")
     if BLOCK_NO_VERIFY and re.search(r"\bgit\b[^\n]*--no-verify\b", cmd):
         return DENY, f"BLOCKED: --no-verify is not allowed ({RULES_DOC}, Safety). Fix the cause of the failing hook instead."
-    if BLOCK_SLEEP_LOOP and re.search(r"\bwhile\b[^\n]*\bsleep\b|\buntil\b[^\n]*\bsleep\b|\bsleep\s+\d+\s*(&&|;)\s*\S", cmd):
+    if BLOCK_SLEEP_LOOP and SLEEP.search(cmd):
         return DENY, f"BLOCKED: no polling or sleep loops ({RULES_DOC}, rule 2). Run it in the background, then stop calling tools and wait."
     if ASK_DESTRUCTIVE and DESTRUCTIVE.search(cmd):
-        return ASK, "Destructive command (force push, reset --hard, clean -f, recursive delete, branch delete): explicit user confirmation required."
+        return ASK, "Destructive command (force push, reset --hard, clean -f, recursive delete, branch delete, discard .): explicit user confirmation required."
     return ALLOW, ""
 
 

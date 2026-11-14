@@ -85,6 +85,12 @@ scripts:ps|copy|scripts/precommit-check.ps1|scripts/agentic-ops/precommit-check.
 scripts:ps|copy|scripts/agentic-sync.ps1|scripts/agentic-ops/agentic-sync.ps1
 scripts:ps|copy|scripts/doctor.ps1|scripts/agentic-ops/doctor.ps1
 scripts:ps|copy|scripts/worker-check.ps1|scripts/agentic-ops/worker-check.ps1
+scripts:ps|copy|scripts/commit-mine.ps1|scripts/agentic-ops/commit-mine.ps1
+scripts:ps|copy|scripts/sync-agent-workflows.ps1|scripts/agentic-ops/sync-agent-workflows.ps1
+scripts:ps|copy|scripts/status-brief.ps1|scripts/agentic-ops/status-brief.ps1
+scripts:ps|copy|scripts/review-queue.ps1|scripts/agentic-ops/review-queue.ps1
+scripts:ps|copy|scripts/triage-untracked.ps1|scripts/agentic-ops/triage-untracked.ps1
+scripts:ps|copy|scripts/ask-agent.ps1|scripts/agentic-ops/ask-agent.ps1
 scripts:sh|copy|scripts/start-brief.sh|scripts/agentic-ops/start-brief.sh
 scripts:sh|copy|scripts/wrap-check.sh|scripts/agentic-ops/wrap-check.sh
 scripts:sh|copy|scripts/precommit-check.sh|scripts/agentic-ops/precommit-check.sh
