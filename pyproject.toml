@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "genai-agentic-ops"
-version = "2.6.0"
+version = "2.8.0"
 description = "Reusable ruleset and deterministic host-native orchestrator for running multiple AI coding agents in one repository."
 readme = "README.md"
 license = { text = "MIT" }
