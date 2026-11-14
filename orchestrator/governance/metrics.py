@@ -2,7 +2,9 @@
 
 Implements Phase 2 Telemetry & Cost Calibration:
 - Appends structured per-run metrics to .agentic/runs/metrics.jsonl
-- Estimates token usage from prompt and output byte sizes when CLI telemetry is absent
+- Records provider-reported token usage when the runtime returns it
+- Estimates token usage from prompt and output byte sizes otherwise, and labels
+  every entry with its token source so the two are never mixed up
 - Computes aggregate statistics per runtime and role for Chief cost calibration
 """
 from __future__ import annotations
@@ -47,6 +49,54 @@ def _unlock_file(f: Any) -> None:
             pass
 
 
+_INPUT_KEYS = ("input_tokens", "prompt_tokens")
+_OUTPUT_KEYS = ("output_tokens", "completion_tokens")
+_CACHE_READ_KEYS = ("cache_read_input_tokens", "cached_tokens")
+
+
+def _first_int(source: dict[str, Any], keys: tuple[str, ...]) -> int | None:
+    for key in keys:
+        value = source.get(key)
+        if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+            return value
+    return None
+
+
+def extract_provider_usage(raw_output: Any) -> dict[str, Any] | None:
+    """Pull provider-reported token usage out of a parsed CLI result.
+
+    Reads a top-level ``usage`` object with Anthropic-style keys
+    (``input_tokens``, ``output_tokens``, ``cache_read_input_tokens``,
+    ``cache_creation_input_tokens``) or OpenAI-style keys (``prompt_tokens``,
+    ``completion_tokens``), plus ``total_cost_usd`` and ``model`` when present.
+    Returns None for any other shape, so the caller falls back to the estimate.
+    Parsing is covered by fixtures only; no runtime's live output has been
+    checked against it yet.
+    """
+    if not isinstance(raw_output, dict):
+        return None
+    usage = raw_output.get("usage")
+    if not isinstance(usage, dict):
+        return None
+    input_tokens = _first_int(usage, _INPUT_KEYS)
+    output_tokens = _first_int(usage, _OUTPUT_KEYS)
+    if input_tokens is None and output_tokens is None:
+        return None
+    result: dict[str, Any] = {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cache_read_input_tokens": _first_int(usage, _CACHE_READ_KEYS),
+        "cache_creation_input_tokens": _first_int(usage, ("cache_creation_input_tokens",)),
+    }
+    cost = raw_output.get("total_cost_usd")
+    if isinstance(cost, (int, float)) and not isinstance(cost, bool):
+        result["cost_usd"] = float(cost)
+    model = raw_output.get("model")
+    if isinstance(model, str) and model:
+        result["model"] = model
+    return result
+
+
 class TelemetryLedger:
     """Records and summarizes execution metrics across agent runtimes."""
 
@@ -77,6 +127,7 @@ class TelemetryLedger:
         status: str = "completed",
         verified: bool = False,
         quarantined_files_count: int = 0,
+        provider_usage: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Append a single task execution telemetry entry to metrics.jsonl."""
         stdout_bytes = len((stdout_text or "").encode("utf-8", errors="replace"))
@@ -84,7 +135,7 @@ class TelemetryLedger:
         est_tokens = self.estimate_tokens(prompt_text, stdout_text, stderr_text)
 
         entry = {
-            "schema_version": "1.0",
+            "schema_version": "1.1",
             "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "run_id": run_id,
             "task_id": task_id,
@@ -95,6 +146,8 @@ class TelemetryLedger:
             "stdout_bytes": stdout_bytes,
             "stderr_bytes": stderr_bytes,
             "estimated_tokens": est_tokens,
+            "token_source": "provider" if provider_usage else "estimated",
+            "provider_usage": provider_usage,
             "status": status,
             "verified": bool(verified),
             "quarantined_files_count": int(quarantined_files_count),
@@ -151,6 +204,9 @@ class TelemetryLedger:
                 "total_duration_ms": 0,
                 "avg_duration_ms": 0,
                 "total_estimated_tokens": 0,
+                "runs_with_provider_usage": 0,
+                "total_provider_input_tokens": 0,
+                "total_provider_output_tokens": 0,
                 "by_runtime": {},
             }
 
@@ -158,6 +214,10 @@ class TelemetryLedger:
         verified_count = sum(1 for e in entries if e.get("verified"))
         total_dur = sum(int(e.get("duration_ms", 0)) for e in entries)
         total_tokens = sum(int(e.get("estimated_tokens", 0)) for e in entries)
+
+        usages = [e["provider_usage"] for e in entries if isinstance(e.get("provider_usage"), dict)]
+        provider_in = sum(int(u.get("input_tokens") or 0) for u in usages)
+        provider_out = sum(int(u.get("output_tokens") or 0) for u in usages)
 
         by_runtime: dict[str, dict[str, Any]] = {}
         for e in entries:
@@ -179,5 +239,8 @@ class TelemetryLedger:
             "total_duration_ms": total_dur,
             "avg_duration_ms": total_dur // total,
             "total_estimated_tokens": total_tokens,
+            "runs_with_provider_usage": len(usages),
+            "total_provider_input_tokens": provider_in,
+            "total_provider_output_tokens": provider_out,
             "by_runtime": by_runtime,
         }
