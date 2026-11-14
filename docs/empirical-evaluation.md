@@ -4,6 +4,22 @@ Comparative empirical benchmark measuring agent performance, token consumption, 
 
 ---
 
+## Status and limitations (read first)
+
+Read the figures in this document as a single-scenario estimate, not as a controlled experiment.
+
+- **Token counts are estimates.** They use a heuristic of about 4 characters per token, not usage reported by a model provider. From the next release the telemetry ledger records provider-reported usage when a runtime returns it and labels each entry with its token source.
+- **Not reproducible from this repository.** No run script, raw logs, timestamps or per-run traces are published here.
+- **One scenario, no repetition.** There are no repeated runs and no variance estimate.
+- **The two cases differ in more than the kit.** Case B follows a fixed list of poor practices (full repository dump, an 18-turn polling loop, `git add .`), and Case A uses a chief with a worker while Case B uses one agent. The 26.04x ratio therefore describes this scenario, not the effect of the kit on agents in general.
+- **Not per-tool results.** Section 2 lists several tools and models, but one table is reported. The hook adapters for Codex and Cursor have not been run inside the real tools (see "Field notes and known limits" in the README).
+- **Known inconsistencies.** The closed-form approximation in section 5 gives 608,400 polling tokens while the table in section 4 lists 598,530. Section 6 states a vanilla peak context of 48,500 tokens while turn 22 in section 4 lists 53,500 prompt tokens; the utilization percentages in section 6 follow the 48,500 figure.
+- **A different measurement disagrees on cost.** The head-to-head run of 2026-11-03 (README, "Field notes and known limits": 9 interleaved runs per setup, one model, one small task) found 7 of 9 completions with the kit against 9 of 9 without, and a cost difference of +5.7% with a 95% interval from -5.5% to +16.5%.
+
+A controlled evaluation needs a fair baseline, a baseline with manual best practices, the same agent topology in every group, repeated runs, provider-reported usage and published raw logs.
+
+---
+
 ## 1. Executive Summary
 
 In a realistic multi-tier development scenario—involving a 4-file feature modification, a 3-minute background database migration, and a concurrent parallel agent active in the same repository—an agent governed by `genai-agentic-ops` achieved:
@@ -32,7 +48,7 @@ In a realistic multi-tier development scenario—involving a 4-file feature modi
    - Operating via `.cursor/hooks/guard.py` and `.codex/hooks/guard.py`.
 
 ### Telemetry & Measurement Instrument
-Metrics were measured using the `genai-agentic-ops` standardized telemetry ledger (`orchestrator/governance/metrics.py`) with byte-level OS file locks and exact token calibration (~4 characters per token across prompts, completions, and tool payload envelopes).
+Metrics were measured using the `genai-agentic-ops` standardized telemetry ledger (`orchestrator/governance/metrics.py`) with byte-level OS file locks and a heuristic token estimate (~4 characters per token across prompts, completions, and tool payload envelopes), not provider-reported usage.
 
 ---
 

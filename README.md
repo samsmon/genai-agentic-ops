@@ -329,7 +329,7 @@ If a tool has no adapter or its hook does not fire, you still get the git hooks,
 
 ## Empirical benchmark & token economics
 
-A controlled multi-agent benchmark on a shared multi-tier workload (4-file feature modification + 3-minute background ETL + parallel active agent in the same repository) evaluated operational performance, token consumption, and collision rates with versus without the `genai-agentic-ops` ruleset and enforcement kit.
+A single-scenario comparison on a shared multi-tier workload (4-file feature modification + 3-minute background ETL + parallel active agent in the same repository) evaluated operational performance, token consumption, and collision rates with versus without the `genai-agentic-ops` ruleset and enforcement kit.
 
 Evaluated on Windows 11 with **Google Antigravity (Gemini 3.8 Flash High & Gemini 2.5 Pro)**, **Claude Code (Claude 3.5 Sonnet v2)**, and **Codex/Cursor (GPT-4o)**:
 
@@ -342,6 +342,8 @@ Evaluated on Windows 11 with **Google Antigravity (Gemini 3.8 Flash High & Gemin
 | **5-Hour Window Quota** | **11.6%** used | **301.1%** used (RATE LIMITED) | Prevents mid-session rate-limit lockout |
 | **Git Collisions / Race Conditions** | **0** | **2** | `commit-mine` rejects foreign files; prevents branch corruption |
 | **Destructive Command Interceptions** | **100% intercepted** | Executed without prompt | Guard hooks block hard resets, wipes, and force-pushes |
+
+These figures are a single-scenario estimate: token counts use a heuristic of about 4 characters per token, there are no repeated runs, and no raw logs are published. The head-to-head run of 2026-11-03 under "Field notes and known limits" found no cost difference and a lower completion rate with the kit. Read [Status and limitations](docs/empirical-evaluation.md#status-and-limitations-read-first) before citing them.
 
 For complete turn-by-turn telemetry, mathematical formulas of context compounding, and failure taxonomy, see [`docs/empirical-evaluation.md`](docs/empirical-evaluation.md).
 
