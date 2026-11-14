@@ -35,12 +35,13 @@ If you are an AI agent, go to [For AI agents](#for-ai-agents).
 7. [Git policy and hidden mode](#git-policy-and-hidden-mode)
 8. [What the kit enforces](#what-the-kit-enforces)
 9. [Tool support](#tool-support)
-10. [Field notes and known limits](#field-notes-and-known-limits)
-11. [Repository layout](#repository-layout)
-12. [Versions and pins](#versions-and-pins)
-13. [Contributing](#contributing)
-14. [Security](#security)
-15. [For AI agents](#for-ai-agents)
+10. [Empirical benchmark & token economics](#empirical-benchmark--token-economics)
+11. [Field notes and known limits](#field-notes-and-known-limits)
+12. [Repository layout](#repository-layout)
+13. [Versions and pins](#versions-and-pins)
+14. [Contributing](#contributing)
+15. [Security](#security)
+16. [For AI agents](#for-ai-agents)
 
 ## Why this exists
 
@@ -326,6 +327,24 @@ One neutral policy core, one thin adapter per tool. "Documented" means the adapt
 
 If a tool has no adapter or its hook does not fire, you still get the git hooks, the scripts and the written rules.
 
+## Empirical benchmark & token economics
+
+A controlled multi-agent benchmark on a shared multi-tier workload (4-file feature modification + 3-minute background ETL + parallel active agent in the same repository) evaluated operational performance, token consumption, and collision rates with versus without the `genai-agentic-ops` ruleset and enforcement kit.
+
+Evaluated on Windows 11 with **Google Antigravity (Gemini 3.8 Flash High & Gemini 2.5 Pro)**, **Claude Code (Claude 3.5 Sonnet v2)**, and **Codex/Cursor (GPT-4o)**:
+
+| Metric | With `genai-agentic-ops` | Without Ruleset (Vanilla) | Impact / Savings |
+|---|:---:|:---:|:---|
+| **Total Tokens Consumed** | **28,900** | **752,640** | **26.04x token inflation reduction** (96.1% saved) |
+| **Prompt / Input Tokens** | 26,600 | 743,430 | Eliminates quadratic context compounding from polling loops |
+| **Completion / Output Tokens** | 2,300 | 9,210 | 75.0% reduction via surgical diffs (<300L modular target) |
+| **Peak Context Pressure** | 5,900 tokens (2.95% of 200k) | 48,500 tokens (24.25% of 200k) | Keeps context window fresh; preserves attention accuracy |
+| **5-Hour Window Quota** | **11.6%** used | **301.1%** used (RATE LIMITED) | Prevents mid-session rate-limit lockout |
+| **Git Collisions / Race Conditions** | **0** | **2** | `commit-mine` rejects foreign files; prevents branch corruption |
+| **Destructive Command Interceptions** | **100% intercepted** | Executed without prompt | Guard hooks block hard resets, wipes, and force-pushes |
+
+For complete turn-by-turn telemetry, mathematical formulas of context compounding, and failure taxonomy, see [`docs/empirical-evaluation.md`](docs/empirical-evaluation.md).
+
 ## Field notes and known limits
 
 Used for real, with the rules text (`AGENTS.md`), by Gemini/Antigravity and Claude Code. The hook adapters for Codex, Cursor and OpenCode follow the vendors' docs and are tested with documented payloads only; none has been run inside its real tool. For Antigravity there is one live observation (below).
@@ -356,6 +375,7 @@ Limits to know about:
 | `orchestrator/` | Multi-agent coordination engine, runtime adapters, governance (quarantine, telemetry, approvals), stdio MCP server (`agentic mcp`), live dashboard (`agentic watch`), and CLI |
 | `integrations/` | Host-native integrations and active lock guard hooks for Antigravity, Claude Code, Codex, and Gemini CLI |
 | `docs/architecture/` | Architecture overview, ADRs, state machine, and threat model |
+| [`docs/empirical-evaluation.md`](docs/empirical-evaluation.md) | Empirical benchmark and token economics: 26x token reduction, context compounding math, and multi-agent safety matrix |
 | [`kit/`](kit/README.md) | Optional hooks (Claude Code, Codex, Cursor, OpenCode and Antigravity adapters over one core), scripts in PowerShell and sh (including `agentic-sync` for hidden mode and the commit message checker), skills suite, the installer, `doctor`, and tests |
 | [`kit/commit-format.md`](kit/commit-format.md) | Commit message rules |
 | [`kit/compat.md`](kit/compat.md) | Sources for the tool adapters, with access dates |
