@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.8.0 - 2026-11-15
+- **Empirical Benchmark & Token Economics**: Added formal benchmark evaluation ([`docs/empirical-evaluation.md`](docs/empirical-evaluation.md)) demonstrating a **26.04x token inflation reduction** (28.9k vs 752.6k tokens) on shared multi-tier workloads, elimination of context compounding from sleep polling loops, and multi-agent git isolation. Evaluated with Google Antigravity (Gemini 3.8 Flash High & Gemini 2.5 Pro), Claude Code (Claude 3.5 Sonnet v2), and Codex/Cursor (GPT-4o).
+- **Core Guard Policy Hardening (`kit/core/policy.py`)**: Expanded `_BYPASS_VARS` to strictly deny agent evasion via `ALLOW_SECRET_PATTERN`, `SECRET_SCAN_SKIP`, `ALLOW_BIG_FILES`, and `ALLOW_LARGE_SOURCE`; relaxed `IDENTITY` regex to allow safe read-only commands (`git config --get`, `--list`); hardened `SLEEP` regex against PowerShell `Start-Sleep` variants and loops; extended `DESTRUCTIVE` interception to `git restore .`, `git checkout -- .`, and Windows `rmdir /s /q`.
+- **Git Isolation & Scoped Committing (`commit-mine`)**: Added `kit/scripts/commit-mine.ps1` enforcing explicit pathspec staging (`-Paths`), detecting and aborting on foreign session staged files, verifying identity and no AI attribution trailers prior to push.
+- **Workflow & Command Parity (`sync-agent-workflows`)**: Added `kit/scripts/sync-agent-workflows.ps1` to detect drift between Claude Code (`.claude/commands/`) and Antigravity (`.agent/workflows/`); integrated into pre-commit hook checks.
+- **Queue & Diagnostic Tools**: Added `kit/scripts/status-brief.ps1` (offline mid-session status and resume summary), `kit/scripts/review-queue.ps1` (review queue triage and anomaly audit), `kit/scripts/triage-untracked.ps1` (untracked file categorization and `CURRENT_OPS` lock cross-referencing), and `kit/scripts/ask-agent.ps1` (headless CLI peer delegation wrapper in plan mode).
+- **Localized & Dynamic Review Headings**: Added `resolve_review_heading` across `kit/claude/hooks/session_start.py` and `kit/handoff/handoff-check.ps1` to support localized headings (e.g. `## Belum di-review`) and custom `.claude/settings.json` env variables.
+
 ## v2.7.0 - 2026-11-10
 - **Security audit skill (mandatory gate)**: vendored `cloudflare/security-audit-skill` (MIT, commit `c1c8a8c1471069fb0e188eeaff69b8e8db6564a8`) unchanged under `kit/skills/security-audit/` with `LICENSE` and `UPSTREAM.md`, distributed to Claude Code and Antigravity through `kit/MANIFEST`. New rules section 14 requires a scoped security audit before merging or releasing changes that touch auth, secrets, network exposure, IAM or dependencies; unresolved confirmed findings block the merge. The Part B block changed (marker stays `v2`), so a project bootstrapped earlier needs its block refreshed.
 
