@@ -22,6 +22,7 @@ from orchestrator.adapters.process_runner import ProcessRunner
 from orchestrator.core.coordinator import OrchestratorCoordinator
 from orchestrator.core.state_machine import ActorRole, TaskState
 from orchestrator.core.workflow_engine import WorkflowEngine
+from orchestrator.governance.metrics import extract_provider_usage
 from orchestrator.governance.process_info import get_host_tuple
 
 
@@ -398,6 +399,7 @@ class TaskRunner:
             status=run_status,
             verified=(final_status == TaskState.VERIFIED.value),
             quarantined_files_count=len(quarantined_files),
+            provider_usage=extract_provider_usage(exec_res.raw_output),
         )
 
         # 11. Refresh workflow status and update CURRENT_OPS.md projection

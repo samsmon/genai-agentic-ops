@@ -85,6 +85,9 @@ class WorkspaceQuarantine:
         all_modified = diff.get("all_modified", [])
         added_set = set(diff.get("added_files", []))
         quarantined: list[str] = []
+        # Paths whose baseline could not be put back. They stay in the working
+        # tree as the worker left them, so a human has to resolve them.
+        not_restored: dict[str, str] = {}
 
         quarantine_dir = self.runs_dir / run_id / "quarantine"
         files_dir = quarantine_dir / "files"
@@ -119,14 +122,18 @@ class WorkspaceQuarantine:
                             parent = parent.parent
                         else:
                             break
-                except OSError:
-                    pass
+                except OSError as exc:
+                    not_restored[mod_path] = f"remove failed: {exc}"
             elif mod_path in backup:
                 try:
                     full_target.parent.mkdir(parents=True, exist_ok=True)
                     full_target.write_bytes(backup[mod_path])
-                except OSError:
-                    pass
+                except OSError as exc:
+                    not_restored[mod_path] = f"restore failed: {exc}"
+            else:
+                # Existed before the run but was never backed up (over
+                # MAX_BACKUP_FILE_BYTES or unreadable at snapshot time).
+                not_restored[mod_path] = "no baseline backup"
 
         if quarantined:
             quarantine_dir.mkdir(parents=True, exist_ok=True)
@@ -135,6 +142,7 @@ class WorkspaceQuarantine:
                 "run_id": run_id,
                 "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 "quarantined_files": sorted(quarantined),
+                "not_restored": dict(sorted(not_restored.items())),
             }
             manifest_file = quarantine_dir / "manifest.json"
             manifest_file.write_text(json.dumps(manifest, indent=2), encoding="utf-8")

@@ -18,7 +18,12 @@ function Add-Disc([string]$name, [string]$reviewed = '[]', [string]$status = 'do
   if ($inState) { $np = Join-Path $base 'NOW.md'; $t = (Get-Content $np -Raw) + "`n## Awaiting review`n- projects/x/discussion/$name (by claude-code)`n"; Set-Content $np $t -Encoding UTF8 }
 }
 $fail = 0
-function Expect([string]$name, [bool]$ok) { if ($ok) { Write-Output "ok   $name" } else { Write-Output "FAIL $name"; $script:fail++ } }
+function Expect([string]$name, [bool]$ok) {
+  if ($ok) { Write-Output "ok   $name"; return }
+  Write-Output "FAIL $name"; $script:fail++
+  # Show what the script printed, so a failure on another machine can be diagnosed from the log.
+  if ($script:r) { Write-Output ("     exit=" + $script:r.code); ($script:r.out -split "`n") | ForEach-Object { Write-Output "     | $_" } }
+}
 
 New-Env; $r = Check
 Expect 'all good -> exit 0' (($r.code -eq 0) -and ($r.out -match '\[HANDOFF\] 0 failed'))

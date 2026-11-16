@@ -32,7 +32,7 @@ We adopt **shared workspace execution** as the MVP model, governed by the follow
    - After worker exit, the workspace is re-scanned against the baseline.
    - Changed paths are verified against the task's `allowed_paths` and built-in protected paths.
 
-5. **Strict No-Auto-Revert Policy**:
+5. **Strict No-Auto-Revert Policy** (amended for out-of-scope changes, see "Amendment (v2.6.0)" below):
    - If unexpected modifications, deletions, or out-of-scope edits occur, the orchestrator **must never automatically revert or discard files**.
    - The task is immediately marked `BLOCKED`, the lock is retained or frozen, and the diff is presented to the human developer for resolution.
 
@@ -45,3 +45,20 @@ We adopt **shared workspace execution** as the MVP model, governed by the follow
 ### Negative / Trade-offs
 - Concurrency is serialized: write-capable workers cannot execute simultaneously in the same workspace.
 - The advisory lock coordinates cooperating tools; rogue processes outside the harness are not sandboxed by this lock alone.
+
+## Amendment (v2.6.0): quarantine and rollback of out-of-scope changes
+
+Point 5 of the decision no longer holds as written. Since v2.6.0 `orchestrator/governance/quarantine.py` handles changes outside a task's `allowed_paths`, and changes to protected paths, as follows:
+
+- The offending file is copied to `.agentic/runs/<run_id>/quarantine/files/` for review.
+- The pre-run content is written back from an in-memory backup, and files the worker added are removed.
+- The task is still marked `BLOCKED` and the event is written to the audit log.
+
+What stays from the original decision: changes inside `allowed_paths` are never reverted automatically.
+
+Limits of the rollback:
+
+- Files larger than 5 MB are not backed up, so they cannot be restored.
+- A restore or removal can fail at the filesystem level.
+- In both cases the path is listed under `not_restored` in the quarantine `manifest.json` with the reason, the file stays as the worker left it, and a human has to resolve it.
+- Paths excluded from the workspace snapshot (`.git`, `.agentic`, caches, `docs/CURRENT_OPS.md`) are neither checked nor restored.

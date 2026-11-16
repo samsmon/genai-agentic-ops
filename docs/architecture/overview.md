@@ -93,7 +93,9 @@ flowchart TD
 ```
 
 ### Milestone Definitions
-- **M0 — Architecture Foundation & Contracts (Current)**:
+Status at v2.8.0: the source contains the work described under M0 to M5, plus the quarantine, telemetry and MCP server added in v2.6.0 (see `CHANGELOG.md`). M6 is not built: parallel batches are computed, but write tasks run sequentially and there is no worktree isolation. Which runtimes have been verified live is tracked in the README, not here.
+
+- **M0 — Architecture Foundation & Contracts**:
   System architecture, threat model, state machine specifications, ADRs (001-008), versioned JSON Schemas, and contract validation tests.
 - **M1 — Orchestration Core, Workspace Baseline & Advisory Locks**:
   Task/workflow management, dependency resolution, atomic filesystem persistence, crash-resilient write-ahead intent logging, pre-execution workspace baseline snapshotting (hashes of tracked and untracked/gitignored files), and process-verified advisory locking.

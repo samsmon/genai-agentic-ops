@@ -64,16 +64,18 @@ if ((Test-Path -LiteralPath $logPath) -and ((Get-Content -LiteralPath $logPath -
 else { No "LOG: no '- $Today [$Agent]' line in the monthly log" }
 
 $rootFull = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\', '/')
-$discFiles = @(Get-ChildItem -Path $rootFull -Filter *.md -Recurse -ErrorAction SilentlyContinue |
-  Where-Object { $_.Directory.Name -eq $DiscussionDirName -and $_.Name -notlike '_*' -and $_.FullName -notmatch '[\\/]\.git[\\/]' -and $_.FullName -notmatch '[\\/]_template[\\/]' })
+# -Name makes the provider return paths relative to the root. Cutting the root off FullName by
+# length breaks when the root is spelled differently from FullName (8.3 short names in TEMP).
+$discFiles = @(Get-ChildItem -LiteralPath $rootFull -Filter *.md -Recurse -Name -ErrorAction SilentlyContinue |
+  ForEach-Object { $_ -replace '\\', '/' } |
+  Where-Object { $p = $_ -split '/'; $p.Count -ge 2 -and $p[-2] -eq $DiscussionDirName -and $p[-1] -notlike '_*' -and $p -notcontains '.git' -and $p -notcontains '_template' })
 if ($discFiles.Count -eq 0 -or -not (Test-Path -LiteralPath $statePath)) { Ok 'REVIEW: no discussion files to check' }
 else {
   $stateText = ((Get-Content -LiteralPath $statePath -Encoding UTF8) -join "`n") -replace "`r`n", "`n"
   $secNorm = (Resolve-ReviewSection $stateText) -replace '\\', '/'
   $probs = @()
-  foreach ($f in $discFiles) {
-    $rel = $f.FullName.Substring($rootFull.Length).TrimStart('\', '/') -replace '\\', '/'
-    $txt = (Get-Content -LiteralPath $f.FullName -Raw -Encoding UTF8) -replace "`r`n", "`n"
+  foreach ($rel in $discFiles) {
+    $txt = (Get-Content -LiteralPath (Join-Path $rootFull $rel) -Raw -Encoding UTF8) -replace "`r`n", "`n"
     $fm = [regex]::Match($txt, '(?s)^---\n(.*?)\n---')
     if (-not $fm.Success) { $probs += "${rel}: no front matter"; continue }
     $rb = [regex]::Match($fm.Groups[1].Value, '(?m)^reviewed_by:\s*\[(.*?)\]')

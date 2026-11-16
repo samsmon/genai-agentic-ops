@@ -34,8 +34,10 @@ class CodexAdapter:
 
     @property
     def maturity(self) -> MaturityLevel:
-        # Declare honest maturity level: fixture-tested unless verified live on local system
-        return MaturityLevel.LIVE_TESTED if self.detect() else MaturityLevel.FIXTURE_TESTED
+        # Finding the CLI binary is not evidence of an end-to-end run, so
+        # detection never upgrades the level. Raise it only when a recorded
+        # live run of this adapter exists.
+        return MaturityLevel.FIXTURE_TESTED
 
     def find_binary(self) -> str | None:
         """Find executable path for codex CLI."""
