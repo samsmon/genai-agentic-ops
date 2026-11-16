@@ -78,6 +78,8 @@ scripts|copy|commit-format.md|scripts/agentic-ops/commit-format.md
 scripts|copy|harness-builder.md|scripts/agentic-ops/harness-builder.md
 scripts|copy|scripts/doctor.py|scripts/agentic-ops/doctor.py
 scripts|copy|scripts/worker-check.py|scripts/agentic-ops/worker-check.py
+scripts|copy|pr-format.md|scripts/agentic-ops/pr-format.md
+scripts|copy|scripts/pr-check.py|scripts/agentic-ops/pr-check.py
 scripts|copy|MANIFEST|scripts/agentic-ops/MANIFEST
 scripts:ps|copy|scripts/start-brief.ps1|scripts/agentic-ops/start-brief.ps1
 scripts:ps|copy|scripts/wrap-check.ps1|scripts/agentic-ops/wrap-check.ps1
