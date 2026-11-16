@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- **Handoff check no longer depends on how the root path is spelled**: `kit/handoff/handoff-check.ps1` took the relative path of a discussion file by cutting the root off the full path by length, which fails when the two are spelled differently (8.3 short names in the Windows temp directory). It now asks the provider for relative names. The Windows CI job failed on this since v2.8.0. The test suite prints the script output when a case fails.
 - **Provider-reported token usage in telemetry**: `TelemetryLedger` now records `provider_usage` (input, output and cache tokens, cost, model) when a runtime's parsed result carries a `usage` object, and labels every entry with `token_source` (`provider` or `estimated`). The estimate of about 4 characters per token is still recorded next to it. `summarize()` reports how many runs carry provider usage. Ledger entry `schema_version` is now `1.1` (additive). Parsing is fixture-tested only.
 - **Quarantine reports what it could not restore**: `WorkspaceQuarantine` no longer swallows restore failures. Paths with no baseline backup (files over 5 MB) or with a failed restore or removal are listed under `not_restored` in the quarantine `manifest.json`.
 - **Adapter maturity no longer follows binary detection**: the Antigravity, Claude Code, Codex and Gemini CLI adapters reported `live-tested` whenever the CLI binary was found. They now report `fixture-tested` until a recorded live run exists.
