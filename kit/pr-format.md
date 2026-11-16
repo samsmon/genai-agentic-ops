@@ -1,8 +1,8 @@
 # Pull request format
 
-A branch reaches the default branch through a pull request, every time. This holds when the user only says "merge it": the agent opens a pull request, waits for the checks, and merges the pull request. It does not merge the branch locally and push.
+Pull requests are opt-in. Open one only when the user asks for a pull request. Without that request a branch is merged locally, with the method the repository already uses, and pushed as the git policy allows; this holds for repositories with CI too.
 
-Reasons: the checks run before the change lands, the reason for the change is recorded next to the diff, and every merge in the history looks the same whoever made it.
+When the user does ask for a pull request, everything below applies, so that every pull request looks the same whoever opened it.
 
 ## Title
 
@@ -34,7 +34,7 @@ The problem or the goal, in one or two sentences.
 
 ## Steps
 
-1. Work on a branch, not on the default branch. Commit and push as the git policy allows.
+1. Put the work on a branch. Commit and push as the git policy allows.
 2. Write the body to a file and check it: `python scripts/agentic-ops/pr-check.py --title "<title>" --body-file <file>`. `--template` prints the skeleton.
 3. Open the pull request with that title and body (`gh pr create --title ... --body-file ...`). Do not use `--fill`.
 4. Wait for the checks. Merge only when they pass. If a check fails, say so and stop, also when the same check already fails on the default branch: fix it or let the user decide.
@@ -53,4 +53,4 @@ python scripts/agentic-ops/pr-check.py --template
 
 Exit 0 passes (warnings may print), exit 1 fails, exit 2 is a usage error. `--pr` needs the GitHub CLI.
 
-This is a rule and a checker, not a lock. Nothing stops a local merge and push unless the repository has branch protection, which is the setting to turn on if you want it enforced.
+The checker only reads text. It does not open, block or merge anything.
