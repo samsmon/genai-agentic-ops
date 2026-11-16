@@ -169,6 +169,7 @@ Replace the `<!-- GIT-POLICY -->` line with:
 ```markdown
 - **agent-commits** (full git control): without asking again, agents may commit, push, create branches, open PRs and merge them once checks pass and branch protection allows. Still ask first (section 4): force push, `reset --hard`, `clean -fd`, deleting branches or tags, rewriting history, bypassing protection.
 - Run `git diff --stat` and stage only this task's files by path; never commit files another session changed or staged. Never `--no-verify`.
+- Merge a branch only through a pull request (never locally), even on a bare "merge"; format: `scripts/agentic-ops/pr-format.md`.
 - Commits carry the user's configured identity. Never change author or committer; never add `Co-Authored-By`, `Signed-off-by`, `Generated-by` or any agent mark to commits, PRs, merges or squashes.
 - Before each push run `git log @{u}..HEAD --format='%an <%ae> | %cn <%ce>%n%b'`: only the user's identity and no trailers. Anything else: stop and report.
 - Publish the CURRENT_OPS row on claim and on release.
