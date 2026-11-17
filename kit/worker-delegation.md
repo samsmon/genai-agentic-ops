@@ -59,7 +59,7 @@ A run of lines like this shows whether the estimates are too high or too low. Ad
 Goal: <one sentence>
 Allowed Files: <explicit list; no reading or editing outside it>
 Verify Command: <one command, exit 0 means success>
-Evidence required: short diff and the verify output
+Evidence required: short diff and the verify output (literal exit code 0 snippet, screenshot path, or health check)
 Rules: follow RULES.md; do not approve your own work; report DONE or BLOCKED
 ```
 
@@ -67,7 +67,7 @@ Every delegation prompt also points the worker at the project's rules file (rule
 
 ## Verification by the chief
 
-1. Run the verify command yourself. Do not trust the worker's report of it.
+1. Run the verify command yourself. Do not trust the worker's report of it (irrefutable proof standard).
 2. Run `git diff --stat` and compare the files with `Allowed Files`. A file outside the list fails the check: revert that change, then finish the rest yourself.
 
 Where the `scripts` module is installed, `scripts/agentic-ops/worker-check.*` does both checks in one command. Before the worker starts: `worker-check snapshot --out task.snap`, so edits you made yourself do not count. After `DONE`: `worker-check check --allow 'src/a.js,tests/' --verify '<the spec's verify command>' --since task.snap --stat`. It fails on a file outside the list, on a protected file (secrets, keys, hook and agent folders, rules files, CI workflows, the ops log; `ALLOW_SENSITIVE=1` lifts this, on the user's say-so only), or on a failing verify command. Details: `kit/README.md`. The kit also ships a Claude Code subagent template for the worker, `claude/agents/worker.md`, installed with the Claude adapter.

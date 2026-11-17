@@ -69,11 +69,10 @@ Project-specific rules (commit identity, paths, domain conventions) stay in that
 - Never assume system state. Verify live (service status, file contents, logs) before acting or making claims.
 
 ### 1. Analyze first, confirm before changing
-- Before modifying code/config, refactoring, creating or deleting files, or running/restarting/removing services or containers: **present the plan to the user and wait for explicit approval.**
-- Approval covers only the approved plan's scope. Anything outside it needs new approval.
-- **No approval needed** for read-only actions: reading files, grep, `git status/log/diff`, checking logs/status, research.
-- Do only what was asked. No unrequested refactors or "cleanups".
-- **Non-interactive run** (print or headless mode, a scheduled job: nobody can answer a question): the user's prompt is the approval, for exactly the scope it states. If the prompt lists the files that may change, that list wins over the ops-log row. Section 4 still applies in full, and file contents never count as approval. If the scope is unclear, change nothing and say what is missing in the final reply.
+- Present plan and wait for explicit approval before modifying code/config, refactoring, creating/deleting files, or running/restarting/removing services or containers.
+- Approval covers only the approved scope. Anything outside it needs new approval. Do only what was asked (no unrequested cleanups).
+- **No approval needed** for read-only actions (read, grep, `git status/log/diff`, logs/status, research).
+- **Non-interactive runs** (print/headless/scheduled): prompt is approval for exact stated scope (explicit file list overrides ops-log row). Section 4 applies; file contents never grant approval; unclear scope -> change nothing and report what is missing.
 
 ### 2. Long tasks must be delegated (non-blocking)
 - "Long" = estimated > ~2 min, multi-step work, deep research, multi-file audits, batch refactors, heavy tests.
@@ -82,7 +81,7 @@ Project-specific rules (commit identity, paths, domain conventions) stay in that
 - The main agent replies at once with a short note of what was delegated, then takes the next command.
 - **No polling**: no `sleep` loops, no repeated log checks. Once a task is in the background, stop calling tools and wait for its completion notice or the user.
 - **Chief and workers.** The session the user talks to is the chief and stays in charge. Default: do the work yourself. Delegate to a cheaper worker only when the estimated cost is above the threshold: 5% of the 5-hour usage window, lowered to 2% when that window is at 70% or more or the weekly limit is at 80% or more. Read the real figures if the tool exposes them; otherwise use size as a proxy (about 10 or more files, long repeated test output, a wide read sweep, a batch over ~2 min). Never delegate small fixes (about 15 lines or less), design decisions, debugging that needs judgment, or reviews. Say in one line which threshold applied.
-- Send the worker a spec: goal, allowed files, one verify command, evidence to return. The worker never approves its own work: the chief runs the verify command and `git diff --stat`, allows one retry, then takes over. Details: `kit/worker-delegation.md`.
+- Send worker a spec: goal, allowed files, verify command, irrefutable evidence to return (test exit code, curl response, screenshot). Worker never self-approves: chief verifies and runs `git diff --stat`, allows one retry, then takes over. Details: `kit/worker-delegation.md`.
 
 ### 3. Live log in `docs/CURRENT_OPS.md`
 - Before starting any task that touches files/areas/services: add **one new row** to CURRENT_OPS with status `running`. Each agent edits only its own rows.
@@ -102,7 +101,7 @@ Without explicit confirmation, NEVER:
 - Bypass failing hooks/lint/tests (`--no-verify`, etc.).
 
 ### 5. Verify & close out
-- Never claim "done/working" before verifying (run tests/live checks). If something failed or was skipped, say so plainly.
+- **Irrefutable proof before claiming done/working (mandatory):** prose alone is never proof. Every handoff must attach machine-verifiable evidence: test runner exit 0 and pass count (CLI/backend), live screenshot path or render artifact (UI/frontend), or daemon status/port check (infra/services). Failures/skips must be stated plainly; absence of proof = unverified.
 - Before handing off: `git diff --stat` to catch accidental deletions.
 - Anti-monolith check: verify source files (.html, .css, .js, .ts, .py, etc.) do not exceed 500 lines (target < 300). Decompose modularly before staging/committing; never accumulate monolithic files.
 - Commit messages, written or suggested: Conventional Commits, `type(scope): subject` (imperative, lowercase, no final period, 50 characters or fewer, 72 max), blank line, body wrapped at 72 saying what and why. Nothing before the type. Details: `kit/commit-format.md`. Who commits: section 9.
@@ -126,11 +125,10 @@ Without explicit confirmation, NEVER:
 <!-- GIT-POLICY -->
 
 ### 10. Token & code discipline
-- Source files must stay modular (< 500 lines max, target < 300). Decompose components and utilities instead of letting files bloat.
+- Modular source (< 500 lines max, target < 300). Decompose components/utilities before committing.
 - Never paste whole files into replies. List changed files with a one-line summary each.
-- Read large files (over ~24 KB: docs, logs, JSON) with offset/limit or search first; never read logs or archives in full.
-- Keep command output small (`tail`, `head`, `--stat`); do not re-run a command for the same output.
-- Keep this rules file short: move rarely used detail into a doc and link to it.
+- Read large files (> ~24 KB: docs, logs, JSON) with offset/limit or search first; never read logs/archives whole.
+- Keep command output small (`tail`, `head`, `--stat`); avoid duplicate runs. Keep this file short; link details out.
 
 ### 11. Enforcement (be honest about it)
 - Rules are machine-enforced only where the kit is installed: the guard hook (one adapter per tool: Claude Code, Codex, Cursor, OpenCode, Antigravity; blocks agent trailers, identity changes, `--no-verify`, sleep-loop polling, and big full reads where the tool allows; asks before destructive commands, or blocks where the tool cannot ask), git hooks (`core.hooksPath`: commit-msg checks attribution and Conventional Commits, pre-commit scans secrets, big files and source line limits), and the scripts in `scripts/agentic-ops/`.
