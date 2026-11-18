@@ -97,13 +97,22 @@ def use_python3(data):
     return dumps(walk(json.loads(data.decode("utf-8")))).encode("utf-8")
 
 
+def same_dir(x, y):
+    norm = lambda p: os.path.normcase(os.path.realpath(p))
+    return norm(x) == norm(y)
+
+
 def build_plan(a, src):
     project = os.path.abspath(a.project)
     rc, _ = git(project, "rev-parse", "--is-inside-work-tree")
     if rc != 0:
         raise Fail(2, f"{project} is not inside a git work tree")
     _, top = git(project, "rev-parse", "--show-toplevel")
-    project = os.path.normpath(top) if top else project
+    if top and not same_dir(top, project):
+        if not a.allow_parent:
+            raise Fail(2, f"{project} is inside the git work tree of {os.path.normpath(top)} (an ancestor repository, e.g. a dotfiles repo in $HOME); "
+                          "run from that repository's root or pass --allow-parent to install there")
+        project = os.path.normpath(top)
     hidden = a.visibility == "hidden"
     tools = [t for t in a.tools.split(",") if t]
     modules = [m for m in a.modules.split(",") if m]
@@ -238,6 +247,7 @@ def main(argv=None):
     ap.add_argument("--python", choices=("auto", "python", "python3"), default="auto",
                     help="interpreter in the hook commands; auto uses python3 when there is no python on PATH")
     ap.add_argument("--project", default=os.getcwd())
+    ap.add_argument("--allow-parent", action="store_true", help="when --project is inside an ancestor git repository, install at that repository's root")
     ap.add_argument("--apply", action="store_true", help="write the files (default: dry run)")
     ap.add_argument("--force", action="store_true", help="overwrite existing files that differ")
     ap.add_argument("--local-only", action="store_true", help="hidden mode without an overlay remote")

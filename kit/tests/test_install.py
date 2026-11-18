@@ -250,6 +250,18 @@ try:
     os.makedirs(notgit)
     expect("not a git work tree: exit 2", inst(notgit, "--visibility", "visible").returncode == 2)
 
+    # ---- a project folder inside an ancestor repository must not be hijacked (e.g. a dotfiles repo in $HOME)
+    parent = mkproject(BASE, "ancestor")
+    child = os.path.join(parent, "sub", "empty")
+    os.makedirs(child)
+    before = tree(parent)
+    r = inst(child, "--visibility", "visible", "--apply")
+    expect("ancestor repo: exit 2 and nothing written", r.returncode == 2 and tree(parent) == before and "ancestor repository" in r.stderr)
+    r = doctor(child)
+    expect("doctor: ancestor repo is refused", r.returncode == 2 and "--allow-parent" in r.stdout)
+    r = inst(child, "--tools", "antigravity", "--modules", "guard", "--visibility", "visible", "--allow-parent", "--apply")
+    expect("ancestor repo: --allow-parent installs at the ancestor root", r.returncode == 0 and os.path.isfile(os.path.join(parent, "AGENTS.md")))
+
     # ---- --pin: download from a raw base (a file:// copy of the repo stands in for GitHub)
     raw = os.path.join(BASE, "raw")
     pin = "0123456789abcdef0123456789abcdef01234567"

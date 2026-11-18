@@ -136,6 +136,7 @@ def main():
     ap = argparse.ArgumentParser(description="agentic-ops doctor (read-only)")
     ap.add_argument("--project", default="")
     ap.add_argument("--pin", default="", help="expected pin sha to compare with the receipt")
+    ap.add_argument("--allow-parent", action="store_true", help="accept a project inside an ancestor git repository and check that repository's root")
     a = ap.parse_args()
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -143,7 +144,15 @@ def main():
         pass
     start = a.project or os.getcwd()
     rc, top = git(start, "rev-parse", "--show-toplevel")
-    project = os.path.normpath(top) if rc == 0 and top else os.path.abspath(start)
+    project = os.path.abspath(start)
+    if rc == 0 and top:
+        same = os.path.normcase(os.path.realpath(top)) == os.path.normcase(os.path.realpath(project))
+        if same or a.allow_parent:
+            project = os.path.normpath(top)
+        else:
+            print(f"agentic-ops doctor: {project} is inside the git work tree of {os.path.normpath(top)}; "
+                  "run from that repository's root or pass --allow-parent")
+            sys.exit(2)
     print(f"agentic-ops doctor: {project}")
 
     # AGENTS.md
