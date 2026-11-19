@@ -80,13 +80,13 @@ class BudgetGuard:
     # -- configuration -----------------------------------------------------
     def load_config(self) -> dict[str, Any] | None:
         if not self.config_path.is_file():
-            return None
+            return None  # no config file means no budget
         try:
             data = json.loads(self.config_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            return None
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(f"Invalid budget config: cannot read {self.config_path.name}: {exc}")
         if not isinstance(data, dict):
-            return None
+            raise ValueError(f"Invalid budget config: {self.config_path.name} must be a JSON object")
         return validate_budget_config(data.get("budget"))
 
     def load_overrides(self) -> dict[str, Any]:

@@ -219,6 +219,33 @@ class TestBudgetGuard(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_budget_config({"bogus": 1})
 
+    def test_corrupt_config_file_blocks_execution(self) -> None:
+        agentic = self.root / ".agentic"
+        agentic.mkdir(exist_ok=True)
+        for bad in ("{not json", "[1, 2]"):
+            (agentic / "config.json").write_text(bad, encoding="utf-8")
+            with self.assertRaises(ValueError):
+                self.runner.run_task("task-001")
+        self.assertEqual(self.adapter.executed, [])
+
+    def test_missing_config_file_runs_without_budget(self) -> None:
+        self.assertFalse((self.root / ".agentic" / "config.json").exists())
+        self.runner.run_task("task-001")
+        self.assertEqual(len(self.adapter.executed), 1)
+
+    def test_partial_workflow_blocked_by_budget_is_not_success(self) -> None:
+        for tid in ("task-002", "task-003"):  # make tasks independent so one call runs several
+            task = self.coord.task_manager.get_task(tid)
+            task["depends_on"] = []
+            self.coord.storage.save_task(task)
+        self.set_budget(max_run_tokens=500)
+        self.adapter.raw_output = usage(150, 150)  # 300 per task
+        res = self.runner.run_workflow(self.wf)
+        self.assertEqual(res["tasks_executed"], 1)
+        self.assertTrue(res["results"][0]["verification"]["verified"])
+        self.assertEqual(res["budget_blocked"]["decision"], "blocked_admission")
+        self.assertFalse(res["success"])
+
     def test_cost_per_accepted_change_is_computable(self) -> None:
         self.set_budget(max_workflow_tokens=100_000)
         self.adapter.raw_output = usage(300, 100, cost=0.01)

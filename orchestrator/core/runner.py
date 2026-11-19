@@ -442,9 +442,9 @@ class TaskRunner:
             "tasks_executed": len(executed),
             "results": executed,
             "workflow_status": updated_wf.get("status", wf.get("status")),
-            "success": all(
+            "success": not budget_blocked and all(
                 r.get("verification", {}).get("verified", False) for r in executed
-            ) if executed else not budget_blocked,
+            ),
         }
 
     @staticmethod

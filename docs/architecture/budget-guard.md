@@ -18,7 +18,7 @@ An optional `budget` object in `.agentic/config.json` caps spend. Without it not
 }}
 ```
 
-A task may also carry its own `max_task_tokens`. "Run" means one `run_workflow` call. An invalid `budget` object stops execution (fail closed).
+A task may also carry its own `max_task_tokens`. "Run" means one `run_workflow` call. An invalid `budget` object, or a `.agentic/config.json` that exists but cannot be read or is not a JSON object, stops execution (fail closed). A missing file means no budget. `run_workflow` reports `success: false` whenever `budget_blocked` is set.
 
 ## Limitation: this is not a hard mid-run cap
 
