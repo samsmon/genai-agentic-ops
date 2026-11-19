@@ -313,6 +313,23 @@ Limits: a public remote shows the overlay branch (use a private repository for t
 
 Hook enforcement can be bypassed by an agent that edits the hook files, and git hooks can be skipped by whoever commits. Treat the kit as a safety net, not a sandbox.
 
+### Orchestrator budget guard
+
+Unreleased: on `main` after v2.8.0, not in a tagged release yet. The orchestrator can cap spend. It is optional: without a `budget` object in `.agentic/config.json`, nothing is checked and behaviour is unchanged.
+
+```json
+{"budget": {"max_task_tokens": 50000, "max_workflow_tokens": 200000, "max_workflow_usd": 5.0,
+            "max_run_tokens": 100000, "max_run_usd": 2.5}}
+```
+
+- A task is refused before it starts when the spend so far has reached a limit or the task's estimate would cross it. After the run the real spend is charged. Provider-reported and estimated tokens are kept apart.
+- This is not a hard mid-run cap: provider usage is known only after a run ends, so one task can overshoot by what it spends in a single run. That is recorded as an audit event and blocks the next task. The per-task timeout is the only mid-run stop.
+- A blocked task stays `READY`. Only a human can raise a limit (`agentic budget approve`). A budget config that is unreadable or invalid stops execution instead of disabling the cap.
+- Telemetry reports cost per accepted change, using human approvals.
+- Status: tested with a mock adapter only. No runtime's live usage output has been checked against it. USD limits need the runtime to report cost; there is no price table.
+
+Design and limits: [`docs/architecture/budget-guard.md`](docs/architecture/budget-guard.md).
+
 ## Tool support
 
 One neutral policy core, one thin adapter per tool. "Documented" means the adapter follows the tool's official docs and passes tests with payloads copied from them; "tested live" means the real tool was run with the hook installed. Details, sources and access dates: [`kit/README.md`](kit/README.md) and [`kit/compat.md`](kit/compat.md).
@@ -374,9 +391,9 @@ Limits to know about:
 |---|---|
 | [`RULES.md`](RULES.md) | Part A bootstrap, Part B rules block with git-policy and handoff snippets, Part C templates, Part D usage and v1 upgrade |
 | `contracts/` | JSON Schema contracts for agent registry, config, handoff, plan, result, run, task |
-| `orchestrator/` | Multi-agent coordination engine, runtime adapters, governance (quarantine, telemetry, approvals), stdio MCP server (`agentic mcp`), live dashboard (`agentic watch`), and CLI |
+| `orchestrator/` | Multi-agent coordination engine, runtime adapters, governance (quarantine, telemetry, approvals, budget guard), stdio MCP server (`agentic mcp`), live dashboard (`agentic watch`), and CLI |
 | `integrations/` | Host-native integrations and active lock guard hooks for Antigravity, Claude Code, Codex, and Gemini CLI |
-| `docs/architecture/` | Architecture overview, ADRs, state machine, and threat model |
+| `docs/architecture/` | Architecture overview, ADRs, state machine, threat model, and budget guard |
 | [`docs/empirical-evaluation.md`](docs/empirical-evaluation.md) | Empirical benchmark and token economics: 26x token reduction, context compounding math, and multi-agent safety matrix |
 | [`kit/`](kit/README.md) | Optional hooks (Claude Code, Codex, Cursor, OpenCode and Antigravity adapters over one core), scripts in PowerShell and sh (including `agentic-sync` for hidden mode and the commit message checker), skills suite, the installer, `doctor`, and tests |
 | [`kit/commit-format.md`](kit/commit-format.md) | Commit message rules |
