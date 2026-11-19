@@ -16,6 +16,8 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from orchestrator.governance.spend import charged_tokens, run_cost_usd, total_spend
+
 
 _THREAD_LOCK = threading.Lock()
 
@@ -193,8 +195,53 @@ class TelemetryLedger:
             return []
         return entries
 
-    def summarize(self, workflow_id: str | None = None) -> dict[str, Any]:
-        """Compute aggregate calibration statistics across recorded runs."""
+    def summarize(
+        self,
+        workflow_id: str | None = None,
+        approved_task_ids: set[str] | None = None,
+    ) -> dict[str, Any]:
+        """Compute aggregate calibration statistics across recorded runs.
+
+        With ``approved_task_ids`` (tasks a human approved) the summary also
+        carries per-run outcomes and cost per accepted change.
+        """
+        summary = self._summarize(workflow_id)
+        entries = self.list_entries(workflow_id=workflow_id)
+        summary["spend"] = total_spend(entries)
+        if approved_task_ids is not None:
+            summary.update(self._outcomes(entries, approved_task_ids, summary["spend"]))
+        return summary
+
+    @staticmethod
+    def _outcomes(
+        entries: list[dict[str, Any]], approved: set[str], spend: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Per-run outcome records and cost per accepted change, by token source."""
+        runs = []
+        for e in entries:
+            tokens, source = charged_tokens(e)
+            runs.append({
+                "run_id": e.get("run_id"), "task_id": e.get("task_id"),
+                "status": e.get("status"), "verified": bool(e.get("verified")),
+                "approved": e.get("task_id") in approved,
+                "charged_tokens": tokens, "token_source": source,
+                "cost_usd": run_cost_usd(e),
+            })
+        accepted = len({r["task_id"] for r in runs if r["approved"]})
+        per = None
+        if accepted:
+            unmeasured = spend["usd_unmeasured_runs"]
+            per = {
+                "provider_tokens": spend["provider_tokens"] / accepted,
+                "estimated_tokens": spend["estimated_tokens"] / accepted,
+                "provider_usd": None if unmeasured == len(entries) else round(
+                    spend["provider_usd"] / accepted, 6),
+                "usd_unmeasured_runs": unmeasured,
+                "basis": "spend of all runs, failed and blocked included, per approved task",
+            }
+        return {"accepted_changes": accepted, "cost_per_accepted_change": per, "runs": runs}
+
+    def _summarize(self, workflow_id: str | None = None) -> dict[str, Any]:
         entries = self.list_entries(workflow_id=workflow_id)
         if not entries:
             return {

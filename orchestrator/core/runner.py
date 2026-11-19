@@ -20,10 +20,11 @@ from typing import Any
 from orchestrator.adapters.base import ExecutionResult
 from orchestrator.adapters.process_runner import ProcessRunner
 from orchestrator.core.coordinator import OrchestratorCoordinator
+from orchestrator.core.run_summary import build_run_summary
 from orchestrator.core.state_machine import ActorRole, TaskState
 from orchestrator.core.workflow_engine import WorkflowEngine
+from orchestrator.governance.budget import BudgetExceededError
 from orchestrator.governance.metrics import extract_provider_usage
-from orchestrator.governance.process_info import get_host_tuple
 
 
 class TaskRunner:
@@ -42,6 +43,7 @@ class TaskRunner:
         task_id: str,
         *,
         timeout_seconds: float | None = None,
+        budget_run_ids: list[str] | None = None,
     ) -> dict[str, Any]:
         """Execute a ready task through its runtime adapter and verify outcomes."""
         task = self.coord.task_manager.get_task(task_id)
@@ -67,6 +69,8 @@ class TaskRunner:
         adapter = self.coord.registry.resolve_runtime(runtime, role=role)
         if not adapter:
             raise ValueError(f"No runtime adapter registered for runtime '{runtime}'")
+
+        self.coord.budget.admit(task, run_ids=budget_run_ids)  # raises BudgetExceededError
 
         # 2. Prepare execution (advisory lock, baseline snapshot, quarantine backup, intent log)
         backup = self.coord.quarantine.capture_backup()
@@ -363,28 +367,10 @@ class TaskRunner:
         )
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         intent_info = prep.get("intent_record", {})
-        run_summary = {
-            "schema_version": "1.0",
-            "run_id": run_id,
-            "workflow_id": task["workflow_id"],
-            "status": run_status,
-            "host": intent_info.get("host") or get_host_tuple(),
-            "intent": intent_info.get("intent") or {
-                "target_state": run_status,
-                "action": "execute_task",
-                "timestamp": now_iso,
-            },
-            "workspace_baseline": {
-                "git_commit": "untracked",
-                "clean": True,
-                "snapshot_hash": baseline["snapshot_hash"],
-                "timestamp": prep.get("created_at", now_iso),
-            },
-            "active_task_id": task_id,
-            "created_at": prep.get("created_at", now_iso),
-            "updated_at": now_iso,
-            "completed_at": now_iso,
-        }
+        run_summary = build_run_summary(
+            run_id=run_id, task=task, run_status=run_status, intent_info=intent_info,
+            baseline=baseline, prep=prep, now_iso=now_iso,
+        )
         self.coord.audit_logger.record_run_summary(run_summary)
         self.coord.telemetry.record_run_metrics(
             run_id=run_id,
@@ -401,6 +387,9 @@ class TaskRunner:
             quarantined_files_count=len(quarantined_files),
             provider_usage=extract_provider_usage(exec_res.raw_output),
         )
+        if budget_run_ids is not None:
+            budget_run_ids.append(run_id)
+        self.coord.budget.account(task, run_id, run_ids=budget_run_ids)
 
         # 11. Refresh workflow status and update CURRENT_OPS.md projection
         self.coord._refresh_workflow_status(task["workflow_id"])
@@ -422,6 +411,8 @@ class TaskRunner:
         self.coord._advance_ready_tasks(workflow_id)
 
         executed: list[dict[str, Any]] = []
+        run_ids: list[str] = []
+        budget_blocked: dict[str, Any] | None = None
         count = 0
 
         while count < max_tasks:
@@ -432,7 +423,11 @@ class TaskRunner:
 
             task_to_run = ready_tasks[0]
             task_id = task_to_run["task_id"]
-            res = self.run_task(task_id)
+            try:
+                res = self.run_task(task_id, budget_run_ids=run_ids)
+            except BudgetExceededError as exc:
+                budget_blocked = exc.decision
+                break
             executed.append(res)
             count += 1
 
@@ -440,14 +435,16 @@ class TaskRunner:
                 break
 
         updated_wf = self.coord.storage.load_workflow(workflow_id) or {}
+        extra = {"budget_blocked": budget_blocked} if budget_blocked else {}
         return {
+            **extra,
             "workflow_id": workflow_id,
             "tasks_executed": len(executed),
             "results": executed,
             "workflow_status": updated_wf.get("status", wf.get("status")),
             "success": all(
                 r.get("verification", {}).get("verified", False) for r in executed
-            ) if executed else True,
+            ) if executed else not budget_blocked,
         }
 
     @staticmethod

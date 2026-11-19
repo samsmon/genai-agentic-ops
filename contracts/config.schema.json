@@ -161,6 +161,20 @@
         }
       }
     },
+    "budget": {
+      "type": "object",
+      "description": "Optional spend limits enforced by the budget guard. Absent means no limits.",
+      "additionalProperties": false,
+      "properties": {
+        "max_task_tokens": {"type": "integer", "minimum": 0},
+        "max_workflow_tokens": {"type": "integer", "minimum": 0},
+        "max_run_tokens": {"type": "integer", "minimum": 0},
+        "max_workflow_usd": {"type": "number", "minimum": 0},
+        "max_run_usd": {"type": "number", "minimum": 0},
+        "warn_ratio": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "on_estimate_only": {"type": "string", "enum": ["charge", "block"]}
+      }
+    },
     "storage": {
       "type": "object",
       "additionalProperties": false,

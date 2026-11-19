@@ -24,6 +24,7 @@ from orchestrator.core.task_manager import TaskManager
 from orchestrator.core.workflow_engine import WorkflowEngine
 from orchestrator.governance.approval import ApprovalManager
 from orchestrator.governance.audit import AuditLogger
+from orchestrator.governance.budget import BudgetGuard
 from orchestrator.governance.lock import LockManager
 from orchestrator.governance.metrics import TelemetryLedger
 from orchestrator.governance.policy_bridge import PolicyBridge
@@ -53,6 +54,7 @@ class OrchestratorCoordinator:
         self.projector = CurrentOpsProjector(self.root_dir)
         self.quarantine = WorkspaceQuarantine(self.root_dir)
         self.telemetry = TelemetryLedger(self.root_dir)
+        self.budget = BudgetGuard(self.root_dir, self.telemetry, self.audit_logger)
 
     def submit_plan(self, plan_data_or_file: dict[str, Any] | str | Path) -> dict[str, Any]:
         """Validate and submit an execution plan, registering tasks and resolving ready items."""
@@ -299,6 +301,15 @@ class OrchestratorCoordinator:
         self.projector.project(self.task_manager.list_tasks())
 
         return {"task_id": task_id, "status": "approved", "unlocked_tasks": advanced}
+
+    def telemetry_summary(self, workflow_id: str | None = None) -> dict[str, Any]:
+        """Telemetry summary joined with human approvals (cost per accepted change)."""
+        approved = {
+            t["task_id"]
+            for t in self.task_manager.list_tasks(workflow_id=workflow_id)
+            if t.get("status") == TaskState.APPROVED.value
+        }
+        return self.telemetry.summarize(workflow_id=workflow_id, approved_task_ids=approved)
 
     def _refresh_workflow_status(self, workflow_id: str) -> None:
         """Recompute and save workflow aggregate status."""

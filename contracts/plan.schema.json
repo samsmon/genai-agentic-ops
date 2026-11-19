@@ -154,6 +154,11 @@
           "timeout_seconds": {
             "type": "integer",
             "minimum": 10
+          },
+          "max_task_tokens": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optional token cap reserved at admission by the budget guard"
           }
         }
       }

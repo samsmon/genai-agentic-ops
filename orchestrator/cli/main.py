@@ -24,6 +24,7 @@ from orchestrator.cli.approval_cmd import (
     handle_approval_show,
     register_approval_subparser,
 )
+from orchestrator.cli.budget_cmd import handle_budget, register_budget_subparser
 from orchestrator.cli.audit_cmd import handle_audit_show, register_audit_subparser
 from orchestrator.cli.envelope import (
     EXIT_BLOCKED,
@@ -162,7 +163,7 @@ def handle_status(args: argparse.Namespace, coord: OrchestratorCoordinator) -> N
             "workflow": coord.storage.load_workflow(args.workflow_id),
             "tasks": coord.task_manager.list_tasks(workflow_id=args.workflow_id),
             "active_lock": lock_data, "stale_lock": stale_lock, "orphaned_runs_count": len(orphans),
-            "telemetry": coord.telemetry.summarize(workflow_id=args.workflow_id),
+            "telemetry": coord.telemetry_summary(workflow_id=args.workflow_id),
         }
     else:
         workflows = coord.storage.list_workflows()
@@ -170,7 +171,7 @@ def handle_status(args: argparse.Namespace, coord: OrchestratorCoordinator) -> N
             "workflows_count": len(workflows), "workflows": workflows,
             "tasks_count": len(coord.task_manager.list_tasks()),
             "active_lock": lock_data, "stale_lock": stale_lock, "orphaned_runs_count": len(orphans),
-            "telemetry": coord.telemetry.summarize(),
+            "telemetry": coord.telemetry_summary(),
         }
     emit_envelope(ok=True, data=data, exit_code=EXIT_OK)
 
@@ -262,6 +263,8 @@ def build_parser() -> argparse.ArgumentParser:
     # approval show / grant / deny
     register_approval_subparser(subparsers)
 
+    register_budget_subparser(subparsers)
+
     # audit show
     register_audit_subparser(subparsers)
 
@@ -313,6 +316,8 @@ def main(argv: list[str] | None = None) -> None:
             handle_approval_grant(args, coordinator)
         elif args.approval_action == "deny":
             handle_approval_deny(args, coordinator)
+    elif args.subcommand == "budget":
+        handle_budget(args, coordinator)
     elif args.subcommand == "audit":
         if args.audit_action == "show":
             handle_audit_show(args, coordinator)

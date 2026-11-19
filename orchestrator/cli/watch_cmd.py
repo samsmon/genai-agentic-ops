@@ -27,7 +27,7 @@ def render_dashboard(
     tasks = coord.task_manager.list_tasks(workflow_id=workflow_id)
     lock = coord.lock_manager.read_lock()
     stale, stale_reason = coord.lock_manager.is_stale()
-    metrics = coord.telemetry.summarize(workflow_id=workflow_id)
+    metrics = coord.telemetry_summary(workflow_id=workflow_id)
 
     lines: list[str] = [
         "======================================================================",

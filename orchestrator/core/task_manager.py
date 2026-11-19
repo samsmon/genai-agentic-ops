@@ -47,6 +47,8 @@ class TaskManager:
             "retry_limit": task_spec.get("retry_limit", 2),
             "timeout_seconds": task_spec.get("timeout_seconds", 300),
         }
+        if "max_task_tokens" in task_spec:
+            task_data["max_task_tokens"] = task_spec["max_task_tokens"]
         self.storage.save_task(task_data)
         return task_data
 

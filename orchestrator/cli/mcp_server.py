@@ -127,7 +127,7 @@ def execute_mcp_tool(
                 "stale_lock": stale,
                 "stale_reason": reason,
                 "orphaned_runs_count": len(orphans),
-                "telemetry": coord.telemetry.summarize(workflow_id=wf_id),
+                "telemetry": coord.telemetry_summary(workflow_id=wf_id),
             }
             return False, data
 
