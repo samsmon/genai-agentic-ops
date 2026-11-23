@@ -79,8 +79,10 @@ class BudgetGuard:
 
     # -- configuration -----------------------------------------------------
     def load_config(self) -> dict[str, Any] | None:
-        if not self.config_path.is_file():
+        if not self.config_path.exists():
             return None  # no config file means no budget
+        if not self.config_path.is_file():  # a directory or other odd object is a broken config
+            raise ValueError(f"Invalid budget config: {self.config_path.name} is not a file")
         try:
             data = json.loads(self.config_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
@@ -120,7 +122,14 @@ class BudgetGuard:
     # -- admission ---------------------------------------------------------
     def admit(self, task: dict[str, Any], *, run_ids: list[str] | None = None) -> dict[str, Any] | None:
         """Raise BudgetExceededError if the task must not start; else return the decision."""
-        cfg = self.load_config()
+        try:
+            cfg = self.load_config()
+        except ValueError as exc:  # fail closed, and leave a record of why the task did not start
+            self.audit.log_event(
+                "budget_config_invalid", task_id=task["task_id"], workflow_id=task["workflow_id"],
+                details={"message": str(exc)[:300]},
+            )
+            raise
         if cfg is None:
             return None
         wf_id = task["workflow_id"]

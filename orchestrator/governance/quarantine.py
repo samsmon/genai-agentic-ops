@@ -19,8 +19,9 @@ from orchestrator.governance.protected_paths import (
     canonicalize_path,
     is_path_matching,
     is_protected_path,
+    normalize_scope_path,
 )
-from orchestrator.governance.scope_check import IGNORED_DIRECTORIES
+from orchestrator.governance.scope_check import IGNORED_DIRECTORIES, descend_dirs, is_watched_internal
 
 MAX_BACKUP_FILE_BYTES = 5 * 1024 * 1024  # 5 MB per file cap for in-memory backup
 
@@ -34,7 +35,7 @@ class WorkspaceQuarantine:
 
     def _should_ignore(self, rel_path: str) -> bool:
         parts = rel_path.split("/")
-        if any(ignored in parts for ignored in IGNORED_DIRECTORIES):
+        if any(ignored in parts for ignored in IGNORED_DIRECTORIES) and not is_watched_internal(rel_path):
             return True
         if ".tmp." in rel_path or rel_path.endswith(".pyc"):
             return True
@@ -46,12 +47,10 @@ class WorkspaceQuarantine:
         """Capture in-memory byte contents of workspace files prior to worker execution."""
         backups: dict[str, bytes] = {}
         for dirpath, dirnames, filenames in os.walk(self.root_dir):
+            rel_dir = os.path.relpath(dirpath, self.root_dir).replace(os.sep, "/")
             dirnames[:] = [
-                d
-                for d in dirnames
-                if d not in IGNORED_DIRECTORIES
-                and d != "node_modules"
-                and not d.startswith(".tmp.")
+                d for d in descend_dirs("" if rel_dir == "." else rel_dir, dirnames)
+                if d != "node_modules"
             ]
             for fname in filenames:
                 full_path = Path(dirpath) / fname
@@ -81,7 +80,7 @@ class WorkspaceQuarantine:
 
         Returns list of relative file paths that were quarantined and rolled back.
         """
-        norm_allowed = [p.replace("\\", "/").strip("./") for p in allowed_paths]
+        norm_allowed = [normalize_scope_path(p) for p in allowed_paths]
         all_modified = diff.get("all_modified", [])
         added_set = set(diff.get("added_files", []))
         quarantined: list[str] = []

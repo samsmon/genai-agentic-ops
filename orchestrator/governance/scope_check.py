@@ -14,6 +14,7 @@ from orchestrator.governance.protected_paths import (
     canonicalize_path,
     is_path_matching,
     is_protected_path,
+    normalize_scope_path,
 )
 
 IGNORED_DIRECTORIES: tuple[str, ...] = (
@@ -22,6 +23,40 @@ IGNORED_DIRECTORIES: tuple[str, ...] = (
     "__pycache__",
     ".pytest_cache",
 )
+
+
+def is_watched_internal(rel_path: str) -> bool:
+    """Files inside ignored internal folders that a worker could use to change behaviour.
+
+    Git hooks and config, the orchestrator config and the approval records are hashed like
+    ordinary files, so a change to them is seen as a (protected path) violation.
+    """
+    return (
+        rel_path == ".git/config"
+        or rel_path.startswith(".git/hooks/")
+        or rel_path.startswith(".agentic/config")
+        or rel_path.startswith(".agentic/approvals/")
+    )
+
+
+def descend_dirs(rel_dir: str, dirnames: list[str]) -> list[str]:
+    """Directories a workspace walk goes into: skips internal and cache folders, except the
+    watched parts of ``.git`` and ``.agentic``."""
+    keep: list[str] = []
+    for d in dirnames:
+        rel = f"{rel_dir}/{d}" if rel_dir else d
+        if d.startswith(".tmp."):
+            continue
+        if rel in (".git", ".agentic"):
+            keep.append(d)
+        elif rel_dir in (".git", ".agentic"):
+            if rel in (".git/hooks", ".agentic/approvals"):
+                keep.append(d)
+        elif rel.startswith((".git/hooks/", ".agentic/approvals/")):
+            keep.append(d)
+        elif d not in IGNORED_DIRECTORIES:
+            keep.append(d)
+    return keep
 
 SOURCE_EXTENSIONS: tuple[str, ...] = (
     ".html",
@@ -78,7 +113,7 @@ class ScopeChecker:
     def _should_ignore(self, rel_path: str) -> bool:
         """Check if a path belongs to an internal orchestrator or VCS folder."""
         parts = rel_path.split("/")
-        if any(ignored in parts for ignored in IGNORED_DIRECTORIES):
+        if any(ignored in parts for ignored in IGNORED_DIRECTORIES) and not is_watched_internal(rel_path):
             return True
         if ".tmp." in rel_path or rel_path.endswith(".pyc"):
             return True
@@ -91,12 +126,9 @@ class ScopeChecker:
         files: dict[str, dict[str, Any]] = {}
 
         for dirpath, dirnames, filenames in os.walk(self.root_dir):
-            # Prune ignored directories in-place
-            dirnames[:] = [
-                d
-                for d in dirnames
-                if d not in IGNORED_DIRECTORIES and not d.startswith(".tmp.")
-            ]
+            # Prune ignored directories in-place (watched internal parts stay)
+            rel_dir = os.path.relpath(dirpath, self.root_dir).replace(os.sep, "/")
+            dirnames[:] = descend_dirs("" if rel_dir == "." else rel_dir, dirnames)
 
             for fname in filenames:
                 full_path = Path(dirpath) / fname
@@ -180,7 +212,7 @@ class ScopeChecker:
         violations: list[str] = []
 
         # Normalize allowed paths
-        norm_allowed = [p.replace("\\", "/").strip("./") for p in allowed_paths]
+        norm_allowed = [normalize_scope_path(p) for p in allowed_paths]
 
         for mod_path in all_modified:
             # 1. Check if modified file is a protected path

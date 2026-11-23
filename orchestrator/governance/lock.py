@@ -108,7 +108,7 @@ class LockManager:
         try:
             with open(self.lock_file, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except (OSError, json.JSONDecodeError):
+        except (OSError, ValueError):  # ValueError covers bad JSON and bytes that are not UTF-8
             return None
 
     def read_active(self) -> dict[str, Any] | None:
@@ -118,7 +118,7 @@ class LockManager:
         try:
             with open(self.active_file, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except (OSError, json.JSONDecodeError):
+        except (OSError, ValueError):
             return None
 
     def release(self, force: bool = False) -> None:

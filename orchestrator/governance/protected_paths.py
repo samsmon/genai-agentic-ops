@@ -97,6 +97,21 @@ def is_path_matching(path_rel: str, pattern: str) -> bool:
     return False
 
 
+def normalize_scope_path(path: str) -> str:
+    """Normalise a declared path: forward slashes, no leading './', no surrounding '/'.
+
+    Unlike ``str.strip("./")`` this keeps a leading dot that belongs to a name, so
+    ``.github/`` stays ``.github`` and ``.`` still means the root (empty string).
+    """
+    p = path.replace("\\", "/")
+    while p.startswith("./"):
+        p = p[2:]
+    while p.endswith("/."):
+        p = p[:-2]
+    p = p.strip("/")
+    return "" if p == "." else p
+
+
 def is_protected_path(
     path_rel: str,
     extra_protected: list[str] | None = None,
@@ -126,7 +141,7 @@ def check_path_overlap_with_protected(
         all_protected.extend(extra_protected)
 
     for allowed in allowed_paths:
-        norm_allowed = allowed.replace("\\", "/").strip("./")
+        norm_allowed = normalize_scope_path(allowed)
         if not norm_allowed or norm_allowed == "/":
             conflicts.append(f"Root path '/' is forbidden in allowed_paths")
             continue
@@ -147,9 +162,9 @@ def are_paths_disjoint(paths_a: list[str], paths_b: list[str]) -> bool:
     if not paths_a or not paths_b:
         return False
     for a in paths_a:
-        norm_a = a.replace("\\", "/").strip("./")
+        norm_a = normalize_scope_path(a)
         for b in paths_b:
-            norm_b = b.replace("\\", "/").strip("./")
+            norm_b = normalize_scope_path(b)
             if is_path_matching(norm_a, norm_b) or is_path_matching(norm_b, norm_a):
                 return False
     return True
