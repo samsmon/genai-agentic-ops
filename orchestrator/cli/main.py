@@ -115,6 +115,14 @@ def handle_task_run(args: argparse.Namespace, coord: OrchestratorCoordinator) ->
         emit_envelope(ok=False, error={"code": "EXECUTION_ERROR", "message": str(e)}, exit_code=EXIT_ERROR)
 
 
+def handle_task_cancel(args: argparse.Namespace, coord: OrchestratorCoordinator) -> None:
+    try:
+        res = coord.cancel_task(args.task_id, reason=getattr(args, "reason", None) or "")
+        emit_envelope(ok=True, data=res, exit_code=EXIT_OK)
+    except Exception as e:
+        emit_envelope(ok=False, error={"code": "CANCEL_FAILED", "message": str(e)}, exit_code=EXIT_ERROR)
+
+
 def handle_task_approve(args: argparse.Namespace, coord: OrchestratorCoordinator) -> None:
     try:
         res = coord.approve_task(
@@ -237,6 +245,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_trun = task_subs.add_parser("run", help="Execute ready task")
     p_trun.add_argument("task_id", help="Task ID")
     p_trun.add_argument("--timeout", type=int, help="Execution timeout in seconds")
+    p_tcan = task_subs.add_parser("cancel", help="Cancel (abort) a task; stops a running task and releases its lock")
+    p_tcan.add_argument("task_id", help="Task ID")
+    p_tcan.add_argument("--reason", help="Reason recorded in the audit log")
     p_tapp = task_subs.add_parser("approve", help="Approve verified task")
     p_tapp.add_argument("task_id", help="Task ID")
     p_tapp.add_argument("--token", help="One-time cryptographic approval token (required if pending approval exists)")
@@ -299,6 +310,8 @@ def main(argv: list[str] | None = None) -> None:
             handle_task_run(args, coordinator)
         elif args.task_action == "approve":
             handle_task_approve(args, coordinator)
+        elif args.task_action == "cancel":
+            handle_task_cancel(args, coordinator)
     elif args.subcommand == "workflow":
         if args.workflow_action == "run":
             handle_workflow_run(args, coordinator)

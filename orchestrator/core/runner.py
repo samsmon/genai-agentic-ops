@@ -26,6 +26,8 @@ from orchestrator.core.workflow_engine import WorkflowEngine
 from orchestrator.governance.budget import BudgetExceededError
 from orchestrator.governance.metrics import extract_provider_usage
 
+VERIFICATION_TIMEOUT_CAP_SECONDS = 60.0  # per verification command, and never above the task timeout
+
 
 class TaskRunner:
     """Coordinates task execution, runtime adapter invocation, and post-run verification."""
@@ -215,11 +217,14 @@ class TaskRunner:
                     break
 
                 cmd_list = self._format_command(cmd)
+                cmd_timeout = self._verification_timeout(task)
                 v_res = self.runner.run(
-                    command=cmd_list, cwd=self.coord.root_dir, timeout_seconds=60,
+                    command=cmd_list, cwd=self.coord.root_dir, timeout_seconds=cmd_timeout,
                 )
-                passed = (v_res.exit_code == 0)
+                passed = v_res.exit_code == 0 and v_res.status != "timed_out"
                 snippet = (v_res.stdout + "\n" + v_res.stderr).strip()[:500]
+                if v_res.status == "timed_out":
+                    snippet = f"Timed out after {cmd_timeout:g} s and was stopped. {snippet}".strip()[:500]
                 command_results.append({
                     "command": cmd_repr, "exit_code": v_res.exit_code, "passed": passed,
                     "output_snippet": snippet or ("Passed" if passed else "Failed"),
@@ -446,6 +451,15 @@ class TaskRunner:
                 r.get("verification", {}).get("verified", False) for r in executed
             ),
         }
+
+    @staticmethod
+    def _verification_timeout(task: dict[str, Any]) -> float:
+        """Per-command limit: the task timeout, never above the fixed cap."""
+        cap = VERIFICATION_TIMEOUT_CAP_SECONDS
+        try:
+            return min(cap, max(float(task.get("timeout_seconds") or cap), 1.0))
+        except (TypeError, ValueError):
+            return cap
 
     @staticmethod
     def _format_command(cmd: str | list[str]) -> list[str]:

@@ -10,6 +10,7 @@ Implements M1 lifecycle orchestration:
 from __future__ import annotations
 
 import datetime
+import os
 import uuid
 from pathlib import Path
 from typing import Any
@@ -301,6 +302,62 @@ class OrchestratorCoordinator:
         self.projector.project(self.task_manager.list_tasks())
 
         return {"task_id": task_id, "status": "approved", "unlocked_tasks": advanced}
+
+    def cancel_task(self, task_id: str, reason: str = "") -> dict[str, Any]:
+        """Human abort of a task (state machine actor: human).
+
+        If the task is running and the advisory lock names it, the process that holds the
+        lock is stopped with its whole process tree (only when it runs on this host and its
+        start time still matches), the lock is released, and the task becomes cancelled.
+        The workspace is left as it is for review; nothing is rolled back.
+        """
+        task = self.task_manager.get_task(task_id)
+        if not task:
+            raise ValueError(f"Task '{task_id}' not found")
+        status = task["status"]
+        if status in (TaskState.APPROVED.value, TaskState.CANCELLED.value):
+            raise ValueError(f"Task '{task_id}' is already {status} and cannot be cancelled")
+
+        stopped_pid: int | None = None
+        released_lock = False
+        if status == TaskState.RUNNING.value:
+            holder = self.lock_manager.read_lock() or {}
+            if holder.get("task_id") == task_id:
+                host = holder.get("host", {})
+                pid = host.get("pid")
+                alive = is_process_alive(
+                    host.get("hostname", ""), pid or 0, host.get("process_start_time", "")
+                )
+                if alive and pid and pid != os.getpid():
+                    from orchestrator.adapters.process_runner import terminate_process_tree
+
+                    terminate_process_tree(int(pid))
+                    stopped_pid = int(pid)
+                self.lock_manager.release(force=True)
+                released_lock = True
+
+        self.task_manager.update_task_status(task_id, TaskState.CANCELLED, ActorRole.HUMAN)
+        wf_id = task["workflow_id"]
+        self._refresh_workflow_status(wf_id)
+        self.audit_logger.log_event(
+            "task_cancelled",
+            task_id=task_id,
+            workflow_id=wf_id,
+            details={
+                "previous_status": status,
+                "reason": reason,
+                "stopped_pid": stopped_pid,
+                "lock_released": released_lock,
+            },
+        )
+        self.projector.project(self.task_manager.list_tasks())
+        return {
+            "task_id": task_id,
+            "status": TaskState.CANCELLED.value,
+            "previous_status": status,
+            "stopped_pid": stopped_pid,
+            "lock_released": released_lock,
+        }
 
     def telemetry_summary(self, workflow_id: str | None = None) -> dict[str, Any]:
         """Telemetry summary joined with human approvals (cost per accepted change)."""

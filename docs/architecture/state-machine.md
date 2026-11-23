@@ -65,7 +65,7 @@ Every state transition must be initiated by an authorized actor and satisfy prec
 | `verified` | `approved` | Human Operator | `GRANT_APPROVAL` | Interactive human confirmation received. Lock released. |
 | `blocked` | `ready` | Human Operator | `RESOLVE_BLOCKER` | Human inspected diff, resolved conflict, and authorized re-run. |
 | `failed` | `ready` | Orchestrator / Human | `RETRY_TASK` | Retry counter < `retry_limit` and retry approved. |
-| `*` | `cancelled` | Human Operator | `USER_ABORT` | Process group killed; locks released; workspace preserved for review. |
+| `*` | `cancelled` | Human Operator | `USER_ABORT` | Process group killed; locks released; workspace preserved for review. Implemented by `agentic task cancel` (`OrchestratorCoordinator.cancel_task`); not allowed from `approved` or `cancelled`. |
 
 > [!IMPORTANT]
 > Workers are strictly limited to reporting process completion (`running` -> `completed` or `failed`). A worker can NEVER transition a task to `verified` or `approved`.
