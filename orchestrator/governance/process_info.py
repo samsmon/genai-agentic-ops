@@ -26,6 +26,7 @@ def _get_windows_process_creation_time(pid: int) -> str | None:
 
     kernel32 = ctypes.windll.kernel32
     PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+    STILL_ACTIVE = 259
 
     class FILETIME(ctypes.Structure):
         _fields_ = [
@@ -43,6 +44,11 @@ def _get_windows_process_creation_time(pid: int) -> str | None:
         ctypes.POINTER(FILETIME),
     ]
     kernel32.GetProcessTimes.restype = wintypes.BOOL
+    kernel32.GetExitCodeProcess.argtypes = [
+        wintypes.HANDLE,
+        ctypes.POINTER(wintypes.DWORD),
+    ]
+    kernel32.GetExitCodeProcess.restype = wintypes.BOOL
     kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
     kernel32.CloseHandle.restype = wintypes.BOOL
 
@@ -51,6 +57,13 @@ def _get_windows_process_creation_time(pid: int) -> str | None:
         return None
 
     try:
+        # An exited process stays openable while any handle to it is open
+        # elsewhere; only STILL_ACTIVE means it is running.
+        exit_code = wintypes.DWORD()
+        if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+            return None
+        if exit_code.value != STILL_ACTIVE:
+            return None
         c_time, e_time, k_time, u_time = (
             FILETIME(),
             FILETIME(),
