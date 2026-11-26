@@ -189,7 +189,7 @@ class TestPhase123Evolution(unittest.TestCase):
             self.coord, {"jsonrpc": "2.0", "id": 1, "method": "initialize"}
         )
         self.assertIsNotNone(init_resp)
-        self.assertEqual(init_resp["result"]["serverInfo"]["name"], "genai-agentic-ops")
+        self.assertEqual(init_resp["result"]["serverInfo"]["name"], "writgate")
 
         # 2. MCP tools/list
         list_resp = handle_jsonrpc_message(
@@ -218,7 +218,7 @@ class TestPhase123Evolution(unittest.TestCase):
         with redirect_stdout(buf):
             main(["--root", str(self.root), "watch", "--once"])
         dash_out = buf.getvalue()
-        self.assertIn("genai-agentic-ops Live Dashboard", dash_out)
+        self.assertIn("writgate Live Dashboard", dash_out)
         self.assertIn("[LOCK]", dash_out)
         self.assertIn("[TELEMETRY]", dash_out)
 
@@ -285,7 +285,7 @@ class TestPhase123Evolution(unittest.TestCase):
         out_cl.seek(0)
         resp_cl = json.loads(out_cl.read().strip())
         self.assertEqual(resp_cl["id"], "req-cl")
-        self.assertEqual(resp_cl["result"]["serverInfo"]["name"], "genai-agentic-ops")
+        self.assertEqual(resp_cl["result"]["serverInfo"]["name"], "writgate")
 
 
 if __name__ == "__main__":

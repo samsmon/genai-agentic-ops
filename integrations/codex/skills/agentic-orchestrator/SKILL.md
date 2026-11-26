@@ -5,7 +5,7 @@ description: Formulate structured workflow plans, validate schemas, and execute 
 
 # Agentic Orchestrator Skill for Codex
 
-Teaches Codex how to serve as the host conversational assistant and default planner for `genai-agentic-ops`.
+Teaches Codex how to serve as the host conversational assistant and default planner for `writgate`.
 
 ## 1. Host-Native Role (ADR-001, ADR-004)
 

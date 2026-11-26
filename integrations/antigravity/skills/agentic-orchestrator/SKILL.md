@@ -5,7 +5,7 @@ description: Formulate structured workflow plans, validate schemas, and execute 
 
 # Agentic Orchestrator Skill
 
-Teaches Antigravity how to serve as the host conversational assistant and planner for `genai-agentic-ops`.
+Teaches Antigravity how to serve as the host conversational assistant and planner for `writgate`.
 
 ## 1. Formulating Structured Plans
 

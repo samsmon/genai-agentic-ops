@@ -204,7 +204,7 @@ def handle_jsonrpc_message(
             "result": {
                 "protocolVersion": MCP_PROTOCOL_VERSION,
                 "capabilities": {"tools": {}},
-                "serverInfo": {"name": "genai-agentic-ops", "version": "2.6.0"},
+                "serverInfo": {"name": "writgate", "version": "2.6.0"},
             },
         }
 

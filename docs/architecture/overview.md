@@ -1,8 +1,8 @@
-# genai-agentic-ops Target Architecture
+# writgate Target Architecture
 
 ## 1. Vision & Core Philosophy
 
-`genai-agentic-ops` is a reusable, host-native, multi-agent coding orchestration system built on top of the established Agentic Ops governance framework.
+`writgate` is a reusable, host-native, multi-agent coding orchestration system built on top of the established Agentic Ops governance framework.
 
 ### Core Architectural Principles
 1. **Host-Native, Not Orchestrator-First**: The developer interacts directly with their preferred host coding assistant (Antigravity, Claude Code, Codex, Gemini CLI). The orchestrator does not provide a competing chat interface; it operates as a deterministic CLI, state engine, and coordination protocol invoked by the host.

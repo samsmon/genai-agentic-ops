@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "project": {
     "name": "sample-project",
-    "description": "Demonstration project for genai-agentic-ops"
+    "description": "Demonstration project for writgate"
   },
   "orchestration": {
     "planner": {

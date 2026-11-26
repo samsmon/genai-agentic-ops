@@ -1,5 +1,5 @@
 #!/bin/sh
-# genai-agentic-ops installer (sh entry). The behaviour lives in install.py so the PowerShell and sh entries cannot drift.
+# writgate installer (sh entry). The behaviour lives in install.py so the PowerShell and sh entries cannot drift.
 # Dry run by default; add --apply to write. Options: see `sh install.sh --help`.
 here=$(cd "$(dirname "$0")" && pwd)
 for py in python3 python; do

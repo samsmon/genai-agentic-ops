@@ -1,4 +1,4 @@
-"""Runtime adapters package for genai-agentic-ops."""
+"""Runtime adapters package for writgate."""
 from __future__ import annotations
 
 from orchestrator.adapters.antigravity import AntigravityAdapter

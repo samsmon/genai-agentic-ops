@@ -5,7 +5,7 @@ description: Structure and format Chief-to-Worker subagent delegations according
 
 # Worker Delegation Governance (Chief & Workers)
 
-Operational playbook for delegating compute-heavy or mechanical coding tasks from a primary session ("Chief") to specialized background subagents ("Workers") following Rule 2 of `genai-agentic-ops`.
+Operational playbook for delegating compute-heavy or mechanical coding tasks from a primary session ("Chief") to specialized background subagents ("Workers") following Rule 2 of `writgate`.
 
 ## Roles & Responsibilities
 

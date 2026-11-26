@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""genai-agentic-ops installer: the mechanical part of Part A, done the same way every time.
+"""writgate installer: the mechanical part of Part A, done the same way every time.
 
 It copies only the kit files you select (kit/MANIFEST is the one list), merges the Part B rules block into AGENTS.md
 between its markers, adds pointer lines, creates the ops log from the Part C templates, writes an install receipt,
@@ -10,7 +10,7 @@ the plan and writes nothing until you add --apply.
                     --visibility hidden --policy agent-commits --project <dir> [--apply]
 
 Kit source: --kit-dir <checkout>/kit (default: the folder of this file) or --pin <commit-sha> (downloads from
-https://raw.githubusercontent.com/samsmon/genai-agentic-ops/<sha>/..., base overridable with AGENTIC_OPS_RAW_BASE).
+https://raw.githubusercontent.com/samsmon/writgate/<sha>/..., base overridable with AGENTIC_OPS_RAW_BASE).
 
 Exit codes: 0 ok (also for a dry run) | 2 usage or not a git work tree | 3 hidden mode but agentic files are already
 tracked in the project history (nothing is written) | 4 a decision is needed: existing files differ (use --force) or
@@ -235,7 +235,7 @@ def build_plan(a, src):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="genai-agentic-ops installer (dry run unless --apply)")
+    ap = argparse.ArgumentParser(description="writgate installer (dry run unless --apply)")
     ap.add_argument("--tools", default="", help="comma list of: " + ",".join(TOOLS))
     ap.add_argument("--modules", default="guard,githooks,scripts", help="comma list of: " + ",".join(MODULES))
     ap.add_argument("--shell", choices=SHELLS, default="ps" if os.name == "nt" else "sh")
@@ -263,7 +263,7 @@ def main(argv=None):
             raise Fail(2, "use either --kit-dir or --pin")
         src = RemoteSource(a.pin) if a.pin else LocalSource(a.kit_dir or os.path.dirname(os.path.abspath(__file__)))
         project, plan = build_plan(a, src)
-        print(f"genai-agentic-ops install ({'APPLY' if a.apply else 'dry run'}) into {project}")
+        print(f"writgate install ({'APPLY' if a.apply else 'dry run'}) into {project}")
         print(f"  tools={a.tools or '-'} modules={a.modules} shell={a.shell} visibility={a.visibility} policy={a.policy} source={src.label}")
         if pick_python(a.python) == "python3":
             print("  note: hook commands use python3 (no `python` on PATH, or --python python3)")

@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schemas.genai-agentic-ops.org/agent-registry.schema.json",
+  "$id": "https://schemas.writgate.org/agent-registry.schema.json",
   "title": "AgentRegistry",
-  "description": "Agent and runtime registration contract for genai-agentic-ops",
+  "description": "Agent and runtime registration contract for writgate",
   "type": "object",
   "additionalProperties": false,
   "required": [

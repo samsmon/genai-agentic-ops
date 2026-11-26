@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schemas.genai-agentic-ops.org/plan.schema.json",
+  "$id": "https://schemas.writgate.org/plan.schema.json",
   "title": "WorkflowPlan",
   "description": "Structured execution plan submitted by host or external planner",
   "type": "object",

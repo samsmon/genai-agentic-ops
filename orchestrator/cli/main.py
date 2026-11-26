@@ -1,4 +1,4 @@
-"""Command line interface for genai-agentic-ops orchestrator.
+"""Command line interface for writgate orchestrator.
 
 Implements CLI commands:
 - agentic plan validate <plan-file>
@@ -221,7 +221,7 @@ def handle_doctor(args: argparse.Namespace, coord: OrchestratorCoordinator) -> N
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="agentic",
-        description="genai-agentic-ops deterministic orchestration CLI",
+        description="writgate deterministic orchestration CLI",
     )
     parser.add_argument("--root", help="Repository root directory (defaults to auto-detect)")
     subparsers = parser.add_subparsers(dest="subcommand", required=True)

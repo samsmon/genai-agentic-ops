@@ -1,1 +1,1 @@
-"""Orchestrator package for genai-agentic-ops."""
+"""Orchestrator package for writgate."""

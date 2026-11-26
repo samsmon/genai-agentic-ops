@@ -2,7 +2,7 @@
 
 ## 1. Overview & Trust Hierarchy
 
-`genai-agentic-ops` coordinates multiple autonomous AI models operating across developer workstations. Because models generate code, execute shell commands, and read unvetted repository data, security boundaries must be enforced deterministically outside model reasoning.
+`writgate` coordinates multiple autonomous AI models operating across developer workstations. Because models generate code, execute shell commands, and read unvetted repository data, security boundaries must be enforced deterministically outside model reasoning.
 
 ### Trust Boundary Hierarchy
 1. **Human Operator (Root of Trust)**: Only the human developer in the active host session possesses authority to grant permissions, approve destructive actions, and authorize workflow plans.

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schemas.genai-agentic-ops.org/task.schema.json",
+  "$id": "https://schemas.writgate.org/task.schema.json",
   "title": "TaskDefinition",
   "description": "Lifecycle state and specification of an individual orchestrated task",
   "type": "object",

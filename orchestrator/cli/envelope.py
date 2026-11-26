@@ -1,6 +1,6 @@
 """Standardized JSON envelope and exit code constants for CLI commands.
 
-Adheres to genai-agentic-ops CLI protocol:
+Adheres to writgate CLI protocol:
 - schema_version: "1.0"
 - ok: bool
 - error: dict | None

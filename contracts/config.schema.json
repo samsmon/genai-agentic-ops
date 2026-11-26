@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schemas.genai-agentic-ops.org/config.schema.json",
+  "$id": "https://schemas.writgate.org/config.schema.json",
   "title": "ProjectConfiguration",
-  "description": "Project-scoped configuration contract for genai-agentic-ops",
+  "description": "Project-scoped configuration contract for writgate",
   "type": "object",
   "additionalProperties": false,
   "required": [

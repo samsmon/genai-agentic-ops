@@ -1,4 +1,4 @@
-"""Contract validation tests for genai-agentic-ops JSON schemas.
+"""Contract validation tests for writgate JSON schemas.
 
 Validates that all core schemas (config, agent-registry, plan, task,
 handoff, result, run) comply with JSON Schema Draft-07 and correctly

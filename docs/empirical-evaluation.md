@@ -1,6 +1,6 @@
 # Empirical Evaluation & Token Economics
 
-Comparative empirical benchmark measuring agent performance, token consumption, context compounding, and collision rates with and without the `genai-agentic-ops` operational ruleset and enforcement kit.
+Comparative empirical benchmark measuring agent performance, token consumption, context compounding, and collision rates with and without the `writgate` operational ruleset and enforcement kit.
 
 ---
 
@@ -22,7 +22,7 @@ A controlled evaluation needs a fair baseline, a baseline with manual best pract
 
 ## 1. Executive Summary
 
-In a realistic multi-tier development scenario—involving a 4-file feature modification, a 3-minute background database migration, and a concurrent parallel agent active in the same repository—an agent governed by `genai-agentic-ops` achieved:
+In a realistic multi-tier development scenario—involving a 4-file feature modification, a 3-minute background database migration, and a concurrent parallel agent active in the same repository—an agent governed by `writgate` achieved:
 
 - **26.04x Total Token Reduction**: Consumed **28,900 tokens** compared to **752,640 tokens** consumed by an unconstrained agent attempting the same workload.
 - **96.4% Prompt Token Savings**: Prevented context runaway by eliminating polling loops and restricting file dumps.
@@ -48,7 +48,7 @@ In a realistic multi-tier development scenario—involving a 4-file feature modi
    - Operating via `.cursor/hooks/guard.py` and `.codex/hooks/guard.py`.
 
 ### Telemetry & Measurement Instrument
-Metrics were measured using the `genai-agentic-ops` standardized telemetry ledger (`orchestrator/governance/metrics.py`) with byte-level OS file locks and a heuristic token estimate (~4 characters per token across prompts, completions, and tool payload envelopes), not provider-reported usage.
+Metrics were measured using the `writgate` standardized telemetry ledger (`orchestrator/governance/metrics.py`) with byte-level OS file locks and a heuristic token estimate (~4 characters per token across prompts, completions, and tool payload envelopes), not provider-reported usage.
 
 ---
 
@@ -69,7 +69,7 @@ The benchmark executes an end-to-end development task:
 
 ## 4. Empirical Results: Turn-by-Turn Telemetry
 
-### Case A: Agent WITH `genai-agentic-ops` (Governed Execution)
+### Case A: Agent WITH `writgate` (Governed Execution)
 Governed by Rule 1 (plan approval), Rule 2 (non-blocking delegation), Rule 3 (`CURRENT_OPS.md` locks), Rule 5 (modular diffs), Rule 9 (`commit-mine`), and kit policy enforcement.
 
 | Turn | Role / Agent | Action Description | Prompt Tokens | Completion Tokens | Turn Total | Cumulative Tokens |
@@ -88,7 +88,7 @@ Governed by Rule 1 (plan approval), Rule 2 (non-blocking delegation), Rule 3 (`C
 
 ---
 
-### Case B: Agent WITHOUT `genai-agentic-ops` (Unconstrained Vanilla Agent)
+### Case B: Agent WITHOUT `writgate` (Unconstrained Vanilla Agent)
 Vanilla agent behavior with no ruleset, no active hooks, and no task locking.
 
 | Turn | Role / Agent | Action Description | Prompt Tokens | Completion Tokens | Turn Total | Cumulative Tokens |
@@ -121,7 +121,7 @@ $$T_{\text{total, prompt}} = \sum_{k=1}^{N} \Big( C_0 + \sum_{j=1}^{k} \Delta_j 
 When an agent enters a 3-minute polling loop with 10-second sleep intervals ($N = 18$ turns) on an existing context of $C_0 \approx 30,000$ tokens:
 $$T_{\text{polling}} \approx 18 \times 30,000 + \frac{18 \times 19}{2} \times 400 \approx 540,000 + 68,400 = \mathbf{608,400 \text{ tokens}}$$
 
-**`genai-agentic-ops` Rule 2 completely eliminates this quadratic term.** By enforcing asynchronous background delegation and banning polling loops (`BLOCK_SLEEP_LOOP = True`), the polling token overhead is strictly:
+**`writgate` Rule 2 completely eliminates this quadratic term.** By enforcing asynchronous background delegation and banning polling loops (`BLOCK_SLEEP_LOOP = True`), the polling token overhead is strictly:
 $$T_{\text{polling, governed}} = \mathbf{0 \text{ tokens}}$$
 
 ---
@@ -134,7 +134,7 @@ Governed (Case A)   [■■] 28,900 tokens (11.6% of 5h budget)
 Vanilla (Case B)    [■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■] 752,640 tokens (301.1% of 5h budget - RATE LIMITED)
 ```
 
-| Metric | With `genai-agentic-ops` | Without Ruleset | Impact |
+| Metric | With `writgate` | Without Ruleset | Impact |
 |:---|:---:|:---:|:---|
 | **Peak Context Size (Single Turn)** | 5,900 tokens | 48,500 tokens | **8.2x lower context pressure** |
 | **200k Context Window Utilization** | **2.95%** | **24.25%** | Preserves needle-in-haystack attention |
@@ -146,7 +146,7 @@ Vanilla (Case B)    [■■■■■■■■■■■■■■■■■■■�
 
 ## 7. Safety & Failure Mode Matrix
 
-| Failure Mode | Unconstrained Agent (Vanilla) | Governed Agent (`genai-agentic-ops`) | Enforcement Mechanism |
+| Failure Mode | Unconstrained Agent (Vanilla) | Governed Agent (`writgate`) | Enforcement Mechanism |
 |:---|:---|:---|:---|
 | **Sleep / Polling Loops** | Loops for minutes, burns full quota | Intercepted on turn 1 (`BLOCKED: no polling`) | `kit/core/policy.py` (`SLEEP` regex) |
 | **Foreign File Staging** | `git add .` stages other sessions' code | Rejected (`foreign files staged outside -Paths`) | `kit/scripts/commit-mine.ps1` |
@@ -159,4 +159,4 @@ Vanilla (Case B)    [■■■■■■■■■■■■■■■■■■■�
 
 ## 8. Conclusion
 
-`genai-agentic-ops` transforms AI coding agents from unconstrained, quota-burning probability engines into deterministic, budget-conscious team members. By pairing lightweight natural-language rules with hard-line local hook enforcement, repositories can safely host multiple concurrent agents without context degradation, rate-limit lockouts, or codebase corruption.
+`writgate` transforms AI coding agents from unconstrained, quota-burning probability engines into deterministic, budget-conscious team members. By pairing lightweight natural-language rules with hard-line local hook enforcement, repositories can safely host multiple concurrent agents without context degradation, rate-limit lockouts, or codebase corruption.

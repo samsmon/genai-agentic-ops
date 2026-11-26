@@ -106,7 +106,7 @@ try:
     expect("visible install: only the sh scripts, no ps1", any(x.endswith(".sh") for x in kit_files) and not any(x.endswith(".ps1") for x in kit_files))
     ag = read(os.path.join(p, "AGENTS.md"))
     expect("visible install: AGENTS.md has one block and the git policy line is replaced",
-           ag.count("BEGIN genai-agentic-ops") == 1 and ag.count("END genai-agentic-ops") == 1 and "<!-- GIT-POLICY -->" not in ag and "agent-commits" in ag)
+           ag.count("BEGIN writgate") == 1 and ag.count("END writgate") == 1 and "<!-- GIT-POLICY -->" not in ag and "agent-commits" in ag)
     expect("visible install: no hidden-mode section (visible)", ".git/agentic" not in ag)
     expect("visible install: ops log and archive created", "docs/CURRENT_OPS.md" in t and "docs/CURRENT_OPS-archive.md" in t)
     expect("visible install: core.hooksPath set to .githooks", git(p, "config", "--get", "core.hooksPath").stdout.strip() == ".githooks")
@@ -160,19 +160,26 @@ try:
     r = inst(p3, *A, "--visibility", "visible", "--apply")
     ag = read(os.path.join(p3, "AGENTS.md"))
     expect("END without BEGIN: replaced from the heading, one block, own text kept",
-           r.returncode == 0 and ag.count("BEGIN genai-agentic-ops") == 1 and "old rule" not in ag and ag.startswith(user_text) and ag.endswith(tail))
+           r.returncode == 0 and ag.count("BEGIN writgate") == 1 and "old rule" not in ag and ag.startswith(user_text) and ag.endswith(tail))
     p4 = mkproject(BASE, "markers2")
     with open(os.path.join(p4, "AGENTS.md"), "w", newline="") as f:
         f.write(user_text + "<!-- BEGIN genai-agentic-ops v1 -->\n## Agent Rules (genai-agentic-ops v1)\n- old rule\n" + tail)
     before = tree(p4)
     r = inst(p4, *A, "--visibility", "visible", "--apply")
     expect("BEGIN without END: exit 4, nothing written", r.returncode == 4 and tree(p4) == before and "STOP AGENTS.md" in r.stdout)
+    p9 = mkproject(BASE, "markers_oldname")
+    with open(os.path.join(p9, "AGENTS.md"), "w", newline="") as f:
+        f.write(user_text + "<!-- BEGIN genai-agentic-ops v2 -->\n## Agent Rules (genai-agentic-ops v2)\n- old rule\n<!-- END genai-agentic-ops v2 -->" + tail)
+    r = inst(p9, *A, "--visibility", "visible", "--apply")
+    ag = read(os.path.join(p9, "AGENTS.md"))
+    expect("old-name v2 block: replaced by one new block, own text kept",
+           r.returncode == 0 and ag.count("BEGIN writgate") == 1 and "genai-agentic-ops" not in ag and ag.startswith(user_text) and ag.endswith(tail))
     p5 = mkproject(BASE, "markers3")
     with open(os.path.join(p5, "AGENTS.md"), "w", newline="") as f:
         f.write(user_text.rstrip("\n") + "\n")
     r = inst(p5, *A, "--visibility", "visible", "--apply")
     ag = read(os.path.join(p5, "AGENTS.md"))
-    expect("no block yet: appended once after the user's text", r.returncode == 0 and ag.startswith(user_text) and ag.count("BEGIN genai-agentic-ops") == 1)
+    expect("no block yet: appended once after the user's text", r.returncode == 0 and ag.startswith(user_text) and ag.count("BEGIN writgate") == 1)
     r = inst(p5, *A, "--visibility", "visible", "--apply")
     expect("block already current: unchanged", r.returncode == 0 and read(os.path.join(p5, "AGENTS.md")) == ag)
 

@@ -14,7 +14,7 @@ def expect(name, ok):
 
 
 text = open(RULES, encoding="utf-8").read().replace("\r\n", "\n")
-m = re.search(r"```markdown\n(<!-- BEGIN genai-agentic-ops v2 -->.*?<!-- END genai-agentic-ops v2 -->)\n```", text, re.S)
+m = re.search(r"```markdown\n(<!-- BEGIN writgate v2 -->.*?<!-- END writgate v2 -->)\n```", text, re.S)
 block = m.group(1) if m else ""
 b1 = re.search(r"### B1.*?```markdown\n(.*?)\n```", text, re.S)
 b2 = re.search(r"### B2.*?```markdown\n(.*?)\n```", text, re.S)
@@ -27,7 +27,7 @@ worst = (block.replace("<!-- GIT-POLICY -->", b2.group(1) + "\n" + b4.group(1)) 
 expect("rules block found", bool(block))
 expect("exactly one GIT-POLICY placeholder", block.count("<!-- GIT-POLICY -->") == 1)
 expect("snippets B1 to B4 found", bool(b1 and b2 and b3 and b4))
-expect("block has one BEGIN and one END", block.count("BEGIN genai-agentic-ops") == 1 and block.count("END genai-agentic-ops") == 1)
+expect("block has one BEGIN and one END", block.count("BEGIN writgate") == 1 and block.count("END writgate") == 1)
 expect("no v1 marker left in block", "genai-agentic-ops v1" not in block)
 expect("block is at most 10200 characters (Antigravity truncates rule files over 24,000 bytes)", 0 < len(block) <= 10200)
 expect("block with B2, B4 and B3 filled in is at most 12500 characters", 0 < len(worst) <= 12500)
@@ -38,13 +38,13 @@ expect("B4 names the overlay, the file list and the exclude", all(x in b4.group(
 expect("Part A asks for the git policy and the visibility mode", "Repository visibility" in text and "**Git policy**" in text)
 expect("Part A stops on a tracked agentic file instead of rewriting history", "exit code 3" in text and "never rewrite history" in text)
 
-HEAD = re.compile(r"^## Agent Rules \(genai-agentic-ops v\d+\)$", re.M)
+HEAD = re.compile(r"^## Agent Rules \((?:writgate|genai-agentic-ops) v\d+\)$", re.M)
 
 
 def apply_block(doc, blk):
     """Reference implementation of Part A step 4. Returns the new text, or None when the agent must ask the user."""
-    begin = re.search(r"^<!-- BEGIN genai-agentic-ops v\d+ -->\n?", doc, re.M)
-    end = re.search(r"^<!-- END genai-agentic-ops v\d+ -->", doc, re.M)
+    begin = re.search(r"^<!-- BEGIN (?:writgate|genai-agentic-ops) v\d+ -->\n?", doc, re.M)
+    end = re.search(r"^<!-- END (?:writgate|genai-agentic-ops) v\d+ -->", doc, re.M)
     head = HEAD.search(doc)
     if begin and end and begin.start() < end.start():
         return doc[:begin.start()] + blk + doc[end.end():]
@@ -64,14 +64,14 @@ no_markers = pre + old_body + post
 
 for name, doc in (("both markers", full), ("END without BEGIN", orphan)):
     out = apply_block(doc, new)
-    expect(f"{name}: one v2 block, no v1 left", out is not None and out.count("BEGIN genai-agentic-ops v2") == 1 and "genai-agentic-ops v1" not in out)
+    expect(f"{name}: one v2 block, no v1 left", out is not None and out.count("BEGIN writgate v2") == 1 and "genai-agentic-ops v1" not in out)
     expect(f"{name}: surrounding text untouched", out is not None and out.startswith(pre) and out.endswith(post))
     expect(f"{name}: idempotent", out is not None and apply_block(out, new) == out)
 
 expect("BEGIN without END: asks the user", apply_block(no_end, new) is None)
 expect("heading without markers: asks the user", apply_block(no_markers, new) is None)
 appended = apply_block("# Project\n\nOwn rules.\n", new)
-expect("no block at all: appended once", appended is not None and appended.count("BEGIN genai-agentic-ops v2") == 1 and appended.startswith("# Project"))
+expect("no block at all: appended once", appended is not None and appended.count("BEGIN writgate v2") == 1 and appended.startswith("# Project"))
 
 print(f"[TESTS] {fail} failed")
 raise SystemExit(1 if fail else 0)

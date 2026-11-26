@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schemas.genai-agentic-ops.org/result.schema.json",
+  "$id": "https://schemas.writgate.org/result.schema.json",
   "title": "TaskExecutionResult",
   "description": "Normalized worker execution outcome, diff analysis, and independent verification record",
   "type": "object",

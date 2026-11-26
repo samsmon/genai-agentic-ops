@@ -143,7 +143,7 @@ Under `user-only-git` the agent cannot commit, so uncommitted changes are report
 
 ## Where the tests have run
 
-The CI workflow runs the suites below on every push. Last green run: commit `8437139`, 2026-11-11, [run 43009912600](https://github.com/samsmon/genai-agentic-ops/actions/runs/43009912600).
+The CI workflow runs the suites below on every push. Last green run: commit `8437139`, 2026-11-11, [run 43009912600](https://github.com/samsmon/writgate/actions/runs/43009912600).
 
 | Suite | Linux (Ubuntu) | macOS | Windows |
 |---|---|---|---|

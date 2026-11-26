@@ -7,7 +7,7 @@ import re
 import subprocess
 import urllib.request
 
-RAW_BASE = os.environ.get("AGENTIC_OPS_RAW_BASE", "https://raw.githubusercontent.com/samsmon/genai-agentic-ops")
+RAW_BASE = os.environ.get("AGENTIC_OPS_RAW_BASE", "https://raw.githubusercontent.com/samsmon/writgate")
 SYNC_EXT = {"ps": "ps1", "sh": "sh"}
 
 
@@ -105,7 +105,7 @@ def fences(text, heading_re):
 
 def rules_parts(rules_text):
     t = rules_text.replace("\r\n", "\n")
-    m = re.search(r"```markdown\n(<!-- BEGIN genai-agentic-ops v2 -->.*?<!-- END genai-agentic-ops v2 -->)\n```", t, re.S)
+    m = re.search(r"```markdown\n(<!-- BEGIN writgate v2 -->.*?<!-- END writgate v2 -->)\n```", t, re.S)
     if not m:
         raise Fail(2, "RULES.md: Part B block not found")
     return dict(block=m.group(1), b1=fences(t, r"### B1"), b2=fences(t, r"### B2"), b3=fences(t, r"### B3"),
@@ -118,14 +118,14 @@ def compose_block(parts, policy, hidden, handoff):
         pol = pol + "\n" + parts["b4"]
     blk = parts["block"].replace("<!-- GIT-POLICY -->", pol)
     if handoff:
-        end = "<!-- END genai-agentic-ops v2 -->"
+        end = "<!-- END writgate v2 -->"
         blk = blk.replace(end, parts["b3"] + "\n" + end)
     return blk
 
 
-HEAD_RE = re.compile(r"^## Agent Rules \(genai-agentic-ops v\d+\)$", re.M)
-BEGIN_RE = re.compile(r"^<!-- BEGIN genai-agentic-ops v\d+ -->\n?", re.M)
-END_RE = re.compile(r"^<!-- END genai-agentic-ops v\d+ -->", re.M)
+HEAD_RE = re.compile(r"^## Agent Rules \((?:writgate|genai-agentic-ops) v\d+\)$", re.M)
+BEGIN_RE = re.compile(r"^<!-- BEGIN (?:writgate|genai-agentic-ops) v\d+ -->\n?", re.M)
+END_RE = re.compile(r"^<!-- END (?:writgate|genai-agentic-ops) v\d+ -->", re.M)
 
 
 def merge_block(doc, blk):

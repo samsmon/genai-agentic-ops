@@ -5,7 +5,7 @@ description: Detect repetitive workflows and construct standardized harness sugg
 
 # Harness Builder Governance
 
-Operational skill for identifying recurring developer tasks and constructing standardized, lightweight automation harnesses following Rule 12 of `genai-agentic-ops`.
+Operational skill for identifying recurring developer tasks and constructing standardized, lightweight automation harnesses following Rule 12 of `writgate`.
 
 ## Core Principle: Recommend, Never Build Unasked
 

@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-`genai-agentic-ops` models workflow execution as deterministic, auditable state machines. State transitions are strictly validated against actor permissions to ensure that untrusted worker models cannot self-certify completion or bypass governance gates.
+`writgate` models workflow execution as deterministic, auditable state machines. State transitions are strictly validated against actor permissions to ensure that untrusted worker models cannot self-certify completion or bypass governance gates.
 
 ---
 

@@ -161,7 +161,7 @@ def main():
         add("FAIL", "AGENTS.md exists")
     else:
         t = open(ag, encoding="utf-8", errors="replace").read()
-        b, e = len(re.findall(r"BEGIN genai-agentic-ops", t)), len(re.findall(r"END genai-agentic-ops", t))
+        b, e = len(re.findall(r"BEGIN (?:writgate|genai-agentic-ops)", t)), len(re.findall(r"END (?:writgate|genai-agentic-ops)", t))
         add("PASS" if (b == 1 and e == 1) else "FAIL", "AGENTS.md has one rules block with paired markers", f"BEGIN={b} END={e}")
         size = os.path.getsize(ag)
         add("PASS" if size <= 24000 else "WARN", "AGENTS.md under Antigravity's 24,000 byte limit", f"{size} bytes")

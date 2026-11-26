@@ -1,4 +1,4 @@
-"""Agent registry and discovery for genai-agentic-ops runtime adapters.
+"""Agent registry and discovery for writgate runtime adapters.
 
 Discovers registered adapters, queries capabilities, and validates against
 contracts/agent-registry.schema.json.

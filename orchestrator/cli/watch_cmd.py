@@ -1,4 +1,4 @@
-"""Live terminal dashboard for genai-agentic-ops (`agentic watch`).
+"""Live terminal dashboard for writgate (`agentic watch`).
 
 Implements Phase 3 Live Operational Dashboard:
 Renders real-time workflow state, task DAG status, active lock holder,
@@ -31,7 +31,7 @@ def render_dashboard(
 
     lines: list[str] = [
         "======================================================================",
-        f" genai-agentic-ops Live Dashboard | Root: {coord.root_dir.name}",
+        f" writgate Live Dashboard | Root: {coord.root_dir.name}",
         "======================================================================",
     ]
 

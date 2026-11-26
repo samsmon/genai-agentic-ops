@@ -1,4 +1,4 @@
-# genai-agentic-ops installer (PowerShell entry). The behaviour lives in install.py so the PowerShell and sh entries cannot drift.
+# writgate installer (PowerShell entry). The behaviour lives in install.py so the PowerShell and sh entries cannot drift.
 # Dry run by default; add -Apply to write.
 #   .\install.ps1 -Tools antigravity,claude -Modules guard,githooks,scripts -Shell ps -Visibility hidden -Policy agent-commits -Apply
 param(

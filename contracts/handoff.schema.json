@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://schemas.genai-agentic-ops.org/handoff.schema.json",
+  "$id": "https://schemas.writgate.org/handoff.schema.json",
   "title": "TaskHandoffPackage",
   "description": "Bounded, isolated context package provided to worker CLI",
   "type": "object",

@@ -1,4 +1,4 @@
-"""Shared host conformance test suite for genai-agentic-ops.
+"""Shared host conformance test suite for writgate.
 
 Validates that all host integrations (Antigravity, Claude Code, Codex, Gemini CLI):
 1. Contain valid SKILL.md metadata, instructions, and host definitions.

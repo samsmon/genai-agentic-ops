@@ -1,4 +1,4 @@
-# genai-agentic-ops — Universal Rules for AI Agents (v2)
+# writgate — Universal Rules for AI Agents (v2)
 
 > **If a user sent you this URL and you are an AI model, LLM, or coding agent:** this document is meant for you.
 > Do exactly this and nothing more: read it fully, then run **Part A (Bootstrap)** for the current project.
@@ -16,10 +16,10 @@ Optional enforcement scripts and hooks live in [`kit/`](kit/README.md); the rule
 
 You are asked to apply this document to the current project. Follow the numbered steps in order. The rules block in `AGENTS.md` (step 6.1) is the main result of the bootstrap: do not skip it.
 
-**Where things come from.** This file is `https://raw.githubusercontent.com/samsmon/genai-agentic-ops/<sha>/RULES.md` (or a local checkout). The kit is in the same repository at the same `<sha>`: `https://raw.githubusercontent.com/samsmon/genai-agentic-ops/<sha>/kit/<path>`, and `kit/MANIFEST` is the one list of its files. The installer is `kit/install.py` (entries `kit/install.sh` and `kit/install.ps1`); it downloads the kit files itself with `--pin <sha>`, or reads a local checkout with `--kit-dir`. Do not invent kit files, paths or scripts: there is no bootstrap script other than `kit/install.*`. Never save downloads inside the project's working tree; use a scratch folder outside it.
+**Where things come from.** This file is `https://raw.githubusercontent.com/samsmon/writgate/<sha>/RULES.md` (or a local checkout). The kit is in the same repository at the same `<sha>`: `https://raw.githubusercontent.com/samsmon/writgate/<sha>/kit/<path>`, and `kit/MANIFEST` is the one list of its files. The installer is `kit/install.py` (entries `kit/install.sh` and `kit/install.ps1`); it downloads the kit files itself with `--pin <sha>`, or reads a local checkout with `--kit-dir`. Do not invent kit files, paths or scripts: there is no bootstrap script other than `kit/install.*`. Never save downloads inside the project's working tree; use a scratch folder outside it.
 
 1. **Confirm the target.** Run `git remote -v` and `git status -sb` and show both. Compare `origin` with the repository the user named. If the user named none, ask whether this is the right repository. Wrong or missing remote: stop, report, and touch nothing.
-2. **Analyze first, write nothing.** Detect existing agent rule files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.roo/rules`, etc.), an existing `BEGIN genai-agentic-ops` block (any version), and an existing ops log.
+2. **Analyze first, write nothing.** Detect existing agent rule files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.roo/rules`, etc.), an existing `BEGIN writgate` block (any version), and an existing ops log.
 3. **Ask the user five things** (offer a recommended default for each):
    - **Git policy** (recommended: `agent-commits` for the user's own repositories; `user-only-git` for repositories the user shares with others or wants to commit by hand):
      - `agent-commits`: full git control. Agents commit, push, create branches, open PRs and merge without asking again; force push, `reset --hard`, deleting branches or tags and rewriting history still need the user's yes. Commits carry the user's identity and never an agent mark.
@@ -32,10 +32,10 @@ You are asked to apply this document to the current project. Follow the numbered
 4. **Present the plan** and **wait for explicit approval**. The quickest way to get an accurate plan is the installer's dry run, which writes nothing: `python install.py --pin <sha> --project <project> --tools <t1,t2> --modules <m1,m2> --shell <ps|sh> --visibility <hidden|visible> --policy <agent-commits|user-only-git>` (fetch `install.py` from `.../<sha>/kit/install.py` into a scratch folder outside the project first). Show the plan to the user: files created, merged or skipped, the AGENTS.md change, and anything that needs a decision. Commit and push follow the chosen git policy.
 5. **After approval, install.** Preferred: run the same command with `--apply` (add `--remote <url>` for a separate overlay repository; `--force` only if the user approved overwriting files that differ). The installer does everything in step 6, is safe to run twice, and never commits or pushes. Exit codes: 3 = hidden mode but agentic files are already tracked (offer the user: keep them visible, or untrack them knowing the history keeps them; never rewrite history unasked), 4 = a decision is needed (files differ, or damaged markers), 5 = the hidden-mode sync stopped (its own code is printed), 6 = the kit could not be fetched. Report these to the user instead of working around them. If the installer cannot run at all, do step 6 by hand.
 6. **What gets installed** (by the installer, or by hand in this order):
-   1. **The rules block in `AGENTS.md`.** If `AGENTS.md` does not exist, create it. If it exists, **merge, never overwrite**. Copy the **Rules Block (Part B)** verbatim between the `BEGIN/END genai-agentic-ops` markers, and replace the single `<!-- GIT-POLICY -->` line with the chosen snippet from **B2** (`agent-commits`) or **B1** (`user-only-git`); in hidden mode append snippet **B4** right after it. If the user chose `handoff`, append snippet **B3** as the last section before the END marker. If markers already exist (any version), replace only the content between them (the BEGIN and END lines included, written back as v2), keep the user's previous git-policy choice unless they say otherwise, and leave everything else untouched. Markers can be damaged, so handle each case explicitly and never append a second block:
+   1. **The rules block in `AGENTS.md`.** If `AGENTS.md` does not exist, create it. If it exists, **merge, never overwrite**. Copy the **Rules Block (Part B)** verbatim between the `BEGIN/END writgate` markers, and replace the single `<!-- GIT-POLICY -->` line with the chosen snippet from **B2** (`agent-commits`) or **B1** (`user-only-git`); in hidden mode append snippet **B4** right after it. If the user chose `handoff`, append snippet **B3** as the last section before the END marker. If markers already exist (any version), replace only the content between them (the BEGIN and END lines included, written back as v2), keep the user's previous git-policy choice unless they say otherwise, and leave everything else untouched. Markers can be damaged, so handle each case explicitly and never append a second block:
       - **Both markers present:** replace from BEGIN to END.
-      - **END without BEGIN** (the BEGIN line was lost): the block starts at the line `## Agent Rules (genai-agentic-ops vN)` and ends at END. Show that range in the plan, then replace it, writing both markers back.
-      - **BEGIN without END, or the `## Agent Rules (genai-agentic-ops vN)` heading with no markers at all:** the end of the block is unknown. Stop, show the user where you think it ends, and ask before replacing anything.
+      - **END without BEGIN** (the BEGIN line was lost): the block starts at the line `## Agent Rules (writgate vN)` and ends at END. Show that range in the plan, then replace it, writing both markers back.
+      - **BEGIN without END, or the `## Agent Rules (writgate vN)` heading with no markers at all:** the end of the block is unknown. Stop, show the user where you think it ends, and ask before replacing anything.
       - **Neither marker nor heading:** append the block at the end of the file.
       Rules file size: Antigravity truncates any single rule file over 24,000 bytes. If `AGENTS.md` is larger, say so in the plan and suggest moving detail into linked docs. The Part B block is under 9,700 characters (about 12,000 with the git-policy, hidden-mode and handoff snippets filled in).
    2. **Pointer lines, never duplicated content.** `CLAUDE.md` (Claude Code does not read `AGENTS.md` by itself) gets `@AGENTS.md`; create it if the user runs Claude Code. Codex, Cursor and OpenCode read `AGENTS.md` directly, so they need no extra file. Antigravity reads `AGENTS.md` too (current versions); only if a `GEMINI.md` already exists, add one line to it telling the agent to read `AGENTS.md`, and do not create a `GEMINI.md` just for this. Any other existing rules file (`.cursorrules`, etc.) gets one pointer line as well.
@@ -56,8 +56,8 @@ Project-specific rules (commit identity, paths, domain conventions) stay in that
 # B. RULES BLOCK (copy into AGENTS.md)
 
 ```markdown
-<!-- BEGIN genai-agentic-ops v2 -->
-## Agent Rules (genai-agentic-ops v2)
+<!-- BEGIN writgate v2 -->
+## Agent Rules (writgate v2)
 
 ### 0. Session start
 - Read this rules file and `docs/CURRENT_OPS.md` before acting. If `scripts/agentic-ops/start-brief.*` exists, run it instead of doing the checks below by hand; a `STOP:` line or exit code 2 means stop and report to the user.
@@ -147,7 +147,7 @@ Without explicit confirmation, NEVER:
 ### 14. Security audit before merge or release (mandatory)
 - Before merging or releasing a change touching auth, secrets, network exposure, IAM or dependencies, run the `security-audit` skill scoped to that change and report the result; skipping needs the user's explicit yes. Full workflow only for a first release or on request.
 - Unresolved `confirmed` findings block the merge until the user decides; fixing them needs section 1 approval.
-<!-- END genai-agentic-ops v2 -->
+<!-- END writgate v2 -->
 ```
 
 ### B1. Git policy snippet: `user-only-git`
@@ -248,7 +248,7 @@ Analyze first and show me the plan; write nothing until I approve.
 ```
 
 **Pin the URL to a commit SHA or tag, not `main`:**
-`https://raw.githubusercontent.com/<user>/genai-agentic-ops/<commit-sha>/RULES.md`
+`https://raw.githubusercontent.com/<user>/writgate/<commit-sha>/RULES.md`
 A moving `main` means every project silently follows any future change to this file. With a pinned SHA, rules change only when you review and bump the SHA yourself.
 
 **Upgrading from v1:** give the agent the new pinned URL and ask it to run Bootstrap again. It finds the `v1` markers and replaces only the content between them (the marker line becomes `v2`). Expect these changes in your rules file: rotation of finished ops rows to an archive file, a git-policy section (it will ask which one; v1 behaved like `agent-commits`), token discipline, enforcement, and harness builder sections. The kit is a separate, optional offer. Projects that stay on a v1 SHA keep working unchanged.
