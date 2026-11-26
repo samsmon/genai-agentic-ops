@@ -60,14 +60,45 @@ def terminate_process_tree(pid: int, timeout_sec: float = 3.0) -> None:
         except Exception:
             pass
     else:
-        try:
-            pgid = os.getpgid(pid)
-            os.killpg(pgid, signal.SIGKILL)
-        except (ProcessLookupError, PermissionError):
-            try:
-                os.kill(pid, signal.SIGKILL)
-            except (ProcessLookupError, PermissionError):
-                pass
+        # Collect descendants first: once a parent dies they are reparented and cannot be found.
+        for target in [pid, *_descendant_pids(pid, timeout_sec)]:
+            _kill_posix(target)
+
+
+def _descendant_pids(pid: int, timeout_sec: float) -> list[int]:
+    """All descendants of pid according to ps (POSIX). Empty when ps is unavailable."""
+    try:
+        out = subprocess.run(
+            ["ps", "-A", "-o", "pid=", "-o", "ppid="],
+            capture_output=True, text=True, check=True, timeout=timeout_sec,
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    children: dict[int, list[int]] = {}
+    for line in out.splitlines():
+        fields = line.split()
+        if len(fields) == 2:
+            children.setdefault(int(fields[1]), []).append(int(fields[0]))
+    found: list[int] = []
+    queue = [pid]
+    while queue:
+        for child in children.get(queue.pop(), []):
+            found.append(child)
+            queue.append(child)
+    return found
+
+
+def _kill_posix(pid: int) -> None:
+    """Kill pid; kill its whole group only when pid leads it and it is not the caller's."""
+    if pid == os.getpid():
+        return
+    try:
+        if os.getpgid(pid) == pid and pid != os.getpgrp():
+            os.killpg(pid, signal.SIGKILL)
+        else:
+            os.kill(pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        pass
 
 
 def cap_output_string(output: str, max_bytes: int = DEFAULT_MAX_OUTPUT_BYTES) -> str:
