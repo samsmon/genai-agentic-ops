@@ -146,12 +146,14 @@ class TestAdapters(unittest.TestCase):
 
         adapter = AntigravityAdapter(runner=mock_runner)
 
-        # Reviewer mode enforces --mode plan
+        # Reviewer mode enforces --mode plan and passes working_dir as cwd
         task_rev = {"role": "reviewer", "prompt": "Verify plan"}
-        res = adapter.execute(task_rev, {})
-        cmd = mock_runner.run.call_args[1]["command"]
+        res = adapter.execute(task_rev, {"working_dir": "/tmp/repo"})
+        call_kwargs = mock_runner.run.call_args[1]
+        cmd = call_kwargs["command"]
         self.assertIn("--mode", cmd)
         self.assertIn("plan", cmd)
+        self.assertEqual(call_kwargs["cwd"], "/tmp/repo")
         self.assertEqual(res.session_id, "agy-conv-test-999")
 
         # Resume support
@@ -169,13 +171,27 @@ class TestAdapters(unittest.TestCase):
 
         adapter = GeminiCliAdapter(runner=mock_runner)
 
-        # Reviewer mode enforces --approval-mode plan
+        # Reviewer mode enforces --approval-mode plan and sets NO_BROWSER=1 + cwd
         task_rev = {"role": "reviewer", "prompt": "Audit"}
-        res = adapter.execute(task_rev, {})
-        cmd = mock_runner.run.call_args[1]["command"]
+        res = adapter.execute(task_rev, {"working_dir": "/tmp/repo"})
+        call_kwargs = mock_runner.run.call_args[1]
+        cmd = call_kwargs["command"]
         self.assertIn("--approval-mode", cmd)
         self.assertIn("plan", cmd)
+        self.assertEqual(call_kwargs["cwd"], "/tmp/repo")
+        self.assertEqual(call_kwargs["env_overrides"]["NO_BROWSER"], "1")
         self.assertEqual(res.session_id, "gemini-sess-test-456")
+
+        # Non-interactive auth failure maps to blocked instead of generic timeout/failure
+        mock_runner.run.return_value = ExecutionResult(
+            exit_code=41,
+            status="failed",
+            stderr="Error authenticating: FatalAuthenticationError: Manual authorization is required",
+        )
+        res_auth = adapter.execute(task_rev, {"env_overrides": {"NO_BROWSER": "0"}})
+        self.assertEqual(mock_runner.run.call_args[1]["env_overrides"]["NO_BROWSER"], "0")
+        self.assertEqual(res_auth.status, "blocked")
+        self.assertTrue(any("authentication required" in d.lower() for d in res_auth.permission_denials))
 
     def test_codex_adapter(self) -> None:
         mock_runner = MagicMock(spec=ProcessRunner)

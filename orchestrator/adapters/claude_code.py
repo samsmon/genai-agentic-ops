@@ -18,7 +18,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from orchestrator.adapters.base import AgentAdapter, ExecutionResult, MaturityLevel
+from orchestrator.adapters.base import (
+    AgentAdapter,
+    ExecutionResult,
+    MaturityLevel,
+    extract_working_dir,
+)
 from orchestrator.adapters.process_runner import ProcessRunner
 
 
@@ -107,9 +112,11 @@ class ClaudeCodeAdapter:
             cmd.append("--dangerously-skip-permissions")
 
         env_overrides = task.get("env_overrides") or handoff.get("env_overrides")
+        cwd = extract_working_dir(task, handoff)
 
         result = self.runner.run(
             command=cmd,
+            cwd=cwd,
             stdin_input=prompt_text,
             env_overrides=env_overrides,
             strip_anthropic_api_key=True,

@@ -10,7 +10,12 @@ from __future__ import annotations
 import shutil
 from typing import Any
 
-from orchestrator.adapters.base import AgentAdapter, ExecutionResult, MaturityLevel
+from orchestrator.adapters.base import (
+    AgentAdapter,
+    ExecutionResult,
+    MaturityLevel,
+    extract_working_dir,
+)
 from orchestrator.adapters.process_runner import ProcessRunner
 
 
@@ -81,9 +86,11 @@ class CodexAdapter:
 
         cmd = [bin_path, "exec"]
         env_overrides = task.get("env_overrides") or handoff.get("env_overrides")
+        cwd = extract_working_dir(task, handoff)
 
         result = self.runner.run(
             command=cmd,
+            cwd=cwd,
             stdin_input=prompt_text,
             env_overrides=env_overrides,
             timeout_seconds=timeout_seconds,

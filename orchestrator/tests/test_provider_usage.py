@@ -39,6 +39,30 @@ class TestExtractProviderUsage(unittest.TestCase):
         self.assertIsNone(usage["cache_read_input_tokens"])
         self.assertNotIn("cost_usd", usage)
 
+    def test_antigravity_live_usage_keys(self) -> None:
+        raw = {
+            "conversation_id": "conv-123",
+            "status": "SUCCESS",
+            "response": "OK\n",
+            "usage": {
+                "input_tokens": 19242,
+                "output_tokens": 194,
+                "thinking_tokens": 189,
+                "cache_read_tokens": 1200,
+                "total_tokens": 19436,
+            },
+        }
+        self.assertEqual(
+            extract_provider_usage(raw),
+            {
+                "input_tokens": 19242,
+                "output_tokens": 194,
+                "cache_read_input_tokens": 1200,
+                "cache_creation_input_tokens": None,
+                "thinking_tokens": 189,
+            },
+        )
+
     def test_unknown_shapes_return_none(self) -> None:
         for raw in (None, "plain text", [], {}, {"usage": "n/a"}, {"usage": {"tokens": 5}},
                     {"usage": {"input_tokens": True}}, {"usage": {"input_tokens": -1}}):

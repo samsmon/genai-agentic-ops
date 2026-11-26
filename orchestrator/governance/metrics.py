@@ -53,7 +53,7 @@ def _unlock_file(f: Any) -> None:
 
 _INPUT_KEYS = ("input_tokens", "prompt_tokens")
 _OUTPUT_KEYS = ("output_tokens", "completion_tokens")
-_CACHE_READ_KEYS = ("cache_read_input_tokens", "cached_tokens")
+_CACHE_READ_KEYS = ("cache_read_input_tokens", "cached_tokens", "cache_read_tokens")
 
 
 def _first_int(source: dict[str, Any], keys: tuple[str, ...]) -> int | None:
@@ -69,11 +69,10 @@ def extract_provider_usage(raw_output: Any) -> dict[str, Any] | None:
 
     Reads a top-level ``usage`` object with Anthropic-style keys
     (``input_tokens``, ``output_tokens``, ``cache_read_input_tokens``,
-    ``cache_creation_input_tokens``) or OpenAI-style keys (``prompt_tokens``,
-    ``completion_tokens``), plus ``total_cost_usd`` and ``model`` when present.
+    ``cache_creation_input_tokens``), OpenAI-style keys (``prompt_tokens``,
+    ``completion_tokens``), or Antigravity-style ``cache_read_tokens`` and
+    ``thinking_tokens``, plus ``total_cost_usd`` and ``model`` when present.
     Returns None for any other shape, so the caller falls back to the estimate.
-    Parsing is covered by fixtures only; no runtime's live output has been
-    checked against it yet.
     """
     if not isinstance(raw_output, dict):
         return None
@@ -90,6 +89,9 @@ def extract_provider_usage(raw_output: Any) -> dict[str, Any] | None:
         "cache_read_input_tokens": _first_int(usage, _CACHE_READ_KEYS),
         "cache_creation_input_tokens": _first_int(usage, ("cache_creation_input_tokens",)),
     }
+    thinking_tokens = _first_int(usage, ("thinking_tokens",))
+    if thinking_tokens is not None:
+        result["thinking_tokens"] = thinking_tokens
     cost = raw_output.get("total_cost_usd")
     if isinstance(cost, (int, float)) and not isinstance(cost, bool):
         result["cost_usd"] = float(cost)

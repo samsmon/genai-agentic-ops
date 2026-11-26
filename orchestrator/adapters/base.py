@@ -99,6 +99,12 @@ class AgentAdapter(Protocol):
         """Execute task headless using this adapter and return ExecutionResult."""
         ...
 
+
+def extract_working_dir(task: dict[str, Any], handoff: dict[str, Any]) -> str | None:
+    """Return optional workspace directory, preferring orchestrator handoff over task input."""
+    raw = handoff.get("working_dir") or task.get("working_dir")
+    return str(raw) if raw else None
+
     def resume(self, run_handle: str, message: str) -> ExecutionResult:
         """Resume a previous session if supported."""
         ...

@@ -91,6 +91,7 @@ class TaskRunner:
             "protected_paths": task.get("protected_paths", []),
             "acceptance_criteria": task.get("acceptance_criteria", []),
             "verification_commands": task.get("verification_commands", []),
+            "working_dir": str(self.coord.root_dir),
         }
 
         timeout = timeout_seconds or task.get("timeout_seconds") or 300

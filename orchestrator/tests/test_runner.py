@@ -116,6 +116,7 @@ class TestRunner(unittest.TestCase):
         ]
 
         def worker_effect(task: dict[str, Any], handoff: dict[str, Any]) -> None:
+            self.assertEqual(handoff.get("working_dir"), str(self.root.resolve()))
             # Worker creates in-scope file
             src_dir = self.root / "src"
             src_dir.mkdir(parents=True, exist_ok=True)

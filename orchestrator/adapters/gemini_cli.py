@@ -17,7 +17,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from orchestrator.adapters.base import AgentAdapter, ExecutionResult, MaturityLevel
+from orchestrator.adapters.base import (
+    AgentAdapter,
+    ExecutionResult,
+    MaturityLevel,
+    extract_working_dir,
+)
 from orchestrator.adapters.process_runner import ProcessRunner
 
 
@@ -108,10 +113,14 @@ class GeminiCliAdapter:
             if approval_mode in ["auto_edit", "yolo", "plan"]:
                 cmd.extend(["--approval-mode", approval_mode])
 
-        env_overrides = task.get("env_overrides") or handoff.get("env_overrides")
+        raw_env = task.get("env_overrides") or handoff.get("env_overrides")
+        # Prevent Gemini CLI from hanging on interactive browser OAuth prompts in headless mode.
+        env_overrides = {"NO_BROWSER": "1", **(raw_env or {})}
+        cwd = extract_working_dir(task, handoff)
 
         result = self.runner.run(
             command=cmd,
+            cwd=cwd,
             env_overrides=env_overrides,
             timeout_seconds=timeout_seconds,
             run_handle=run_handle,
@@ -124,7 +133,7 @@ class GeminiCliAdapter:
         """Resume session using --resume flag."""
         bin_path = self.find_binary() or "gemini"
         cmd = [bin_path, "-p", message, "--resume", run_handle, "--output-format", "json"]
-        result = self.runner.run(command=cmd)
+        result = self.runner.run(command=cmd, env_overrides={"NO_BROWSER": "1"})
         self._parse_gemini_output(result)
         return result
 
@@ -157,7 +166,17 @@ class GeminiCliAdapter:
                 result.session_id = str(parsed["session_id"])
 
         combined = f"{result.stdout}\n{result.stderr}".lower()
-        if "permission denied" in combined or "approval denied" in combined:
+        if (
+            "fatalauthenticationerror" in combined
+            or "manual authorization is required" in combined
+            or "opening authentication page" in combined
+        ):
+            if not result.permission_denials:
+                result.permission_denials.append(
+                    "Gemini CLI authentication required (non-interactive browser OAuth disabled)"
+                )
+            result.status = "blocked"
+        elif "permission denied" in combined or "approval denied" in combined:
             if not result.permission_denials:
                 result.permission_denials.append("Gemini tool permission denied")
             result.status = "blocked"
