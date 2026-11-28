@@ -21,10 +21,45 @@ the AGENTS.md markers are damaged (nothing is written) | 5 hidden-mode sync stop
 6 kit source unreachable.
 """
 import argparse
+import atexit
 import json
 import os
 import shutil
 import sys
+import tempfile
+import urllib.request
+
+HELPERS = ("sources.py", "receipt.py", "uninstall.py")
+
+
+def fetch_helpers(argv):
+    """With --pin, install.py may have been downloaded alone: fetch its helper modules into a temporary folder."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    pin = ""
+    for i, arg in enumerate(argv):
+        if arg.startswith("--pin="):
+            pin = arg[6:]
+        elif arg == "--pin" and i + 1 < len(argv):
+            pin = argv[i + 1]
+    if not pin or all(os.path.isfile(os.path.join(here, n)) for n in HELPERS):
+        return
+    base = os.environ.get("AGENTIC_OPS_RAW_BASE", "https://raw.githubusercontent.com/samsmon/writgate")
+    folder = tempfile.mkdtemp(prefix="writgate-kit-")
+    atexit.register(shutil.rmtree, folder, True)
+    for name in HELPERS:
+        url = f"{base}/{pin}/kit/{name}"
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "agentic-ops-install"})
+            with urllib.request.urlopen(req, timeout=30) as r, open(os.path.join(folder, name), "wb") as f:
+                f.write(r.read())
+        except Exception as e:  # noqa: BLE001
+            print(f"install: cannot fetch {url}: {e}", file=sys.stderr)
+            sys.exit(6)
+    sys.path.insert(0, folder)
+
+
+if __name__ == "__main__":
+    fetch_helpers(sys.argv[1:])
 
 try:
     from receipt import RECEIPT, load_receipt, next_receipt, untouched

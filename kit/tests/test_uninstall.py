@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KIT = os.path.abspath(os.path.join(HERE, ".."))
@@ -156,6 +157,27 @@ try:
     write(p, RECEIPT, json.dumps({"files": {"../outside.txt": "0"}}).encode())
     r = inst(p, "--uninstall", "--apply", "--force")
     expect("uninstall: a path outside the project is refused", r.returncode == 2 and exists(BASE, "outside.txt"), r)
+
+    # ---- --pin: install.py downloaded on its own fetches its helper modules (RULES.md Part A step 4)
+    scratch = os.path.join(BASE, "scratch")
+    os.makedirs(scratch)
+    shutil.copy(os.path.join(KIT, "install.py"), scratch)
+    repo = Path(BASE, "raw")
+    mkkit("raw/abc123")
+    p = mkproject("pinned")
+    env = dict(ENV, AGENTIC_OPS_RAW_BASE=repo.as_uri())
+
+    def alone(*args):
+        cmd = [sys.executable, "-B", os.path.join(scratch, "install.py"), "--project", p] + list(args)
+        return subprocess.run(cmd, capture_output=True, text=True, env=env, encoding="utf-8", errors="replace")
+
+    r = alone("--pin", "abc123", *A, "--apply")
+    expect("--pin: lone install.py installs", r.returncode == 0 and exists(p, TARGET), r)
+    expect("--pin: nothing is written next to the lone script", os.listdir(scratch) == ["install.py"])
+    r = alone("--pin=abc123", "--uninstall")
+    expect("--pin=sha form works too", r.returncode == 0, r)
+    r = alone("--pin", "nosuchsha", *A)
+    expect("--pin: unreachable source is exit 6", r.returncode == 6, r)
 finally:
     shutil.rmtree(BASE, ignore_errors=True)
 
