@@ -14,7 +14,8 @@ param(
   [switch]$Apply,
   [switch]$Force,
   [switch]$LocalOnly,
-  [switch]$SkipSync
+  [switch]$SkipSync,
+  [switch]$Uninstall
 )
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $py = $null
@@ -36,5 +37,6 @@ if ($Apply) { $args2 += '--apply' }
 if ($Force) { $args2 += '--force' }
 if ($LocalOnly) { $args2 += '--local-only' }
 if ($SkipSync) { $args2 += '--skip-sync' }
+if ($Uninstall) { $args2 += '--uninstall' }
 & $py @args2
 exit $LASTEXITCODE

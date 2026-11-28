@@ -6,6 +6,9 @@ between its markers, adds pointer lines, creates the ops log from the Part C tem
 and in hidden mode runs `agentic-sync init`. It never commits and never pushes. The default is a dry run: it prints
 the plan and writes nothing until you add --apply.
 
+A file the kit changed is updated when it still matches the receipt (you did not edit it); otherwise it is a conflict.
+--uninstall removes what the receipt proves is still the installer's own (also a dry run until --apply).
+
   python install.py --tools antigravity,claude --modules guard,githooks,scripts --shell ps \\
                     --visibility hidden --policy agent-commits --project <dir> [--apply]
 
@@ -24,6 +27,8 @@ import shutil
 import sys
 
 try:
+    from receipt import RECEIPT, load_receipt, next_receipt, untouched
+    from uninstall import run_uninstall
     from sources import (
         Fail,
         LocalSource,
@@ -40,10 +45,11 @@ try:
         rules_parts,
         run_sync,
         select,
-        sha,
         short_diff,
     )
 except ImportError:
+    from kit.receipt import RECEIPT, load_receipt, next_receipt, untouched  # type: ignore[no-redef]
+    from kit.uninstall import run_uninstall  # type: ignore[no-redef]
     from kit.sources import (  # type: ignore[no-redef]
         Fail,
         LocalSource,
@@ -60,7 +66,6 @@ except ImportError:
         rules_parts,
         run_sync,
         select,
-        sha,
         short_diff,
     )
 
@@ -73,7 +78,6 @@ TRACKED_CHECK = [
     ".codex/", ".agents/", ".agent/", ".opencode/", ".githooks/", "scripts/agentic-ops/",
 ]
 POINTER_LINE = "Read AGENTS.md for the project rules."
-RECEIPT = "scripts/agentic-ops/INSTALLED.json"
 
 
 def pick_python(choice):
@@ -137,7 +141,9 @@ def build_plan(a, src):
 
     entries = select(parse_manifest(src.kit("MANIFEST").decode("utf-8")), tools, modules, a.shell)
     parts = rules_parts(src.root("RULES.md").decode("utf-8"))
-    plan, files = [], {}
+    plan, files, found = [], {}, []
+    old = load_receipt(project)
+    old_files = (old or {}).get("files", {})
 
     def item(action, path, detail="", data=None, mode=None):
         plan.append(dict(action=action, path=path, detail=detail, data=data, mode=mode))
@@ -171,6 +177,9 @@ def build_plan(a, src):
             item("create", e["dst"], data=data, mode=e["mode"])
         elif cur.replace(b"\r\n", b"\n") == data.replace(b"\r\n", b"\n"):
             item("unchanged", e["dst"])
+            found.append(e["dst"])
+        elif e["dst"] in old_files and untouched(cur, old_files[e["dst"]]):
+            item("update", e["dst"], "unchanged since the install, the kit has a newer version", data=data, mode=e["mode"])
         else:
             item("conflict", e["dst"], short_diff(cur.decode("utf-8", "replace"), data.decode("utf-8", "replace"), e["dst"]),
                  data=data, mode=e["mode"])
@@ -218,9 +227,9 @@ def build_plan(a, src):
             item("create", "docs/CURRENT_OPS-archive.md", "from the Part C template", data=(parts["c2"] + "\n").encode("utf-8"))
 
     # receipt
-    ver = src.label
-    receipt = dict(source=ver, tools=sorted(tools), modules=sorted(modules), shell=a.shell, visibility=a.visibility,
-                   policy=a.policy, files={k: sha(v) for k, v in sorted(files.items())})
+    meta = dict(source=src.label, tools=sorted(tools), modules=sorted(modules), shell=a.shell, visibility=a.visibility,
+                policy=a.policy)
+    receipt = next_receipt(project, old, meta, files, found)
     rb = dumps(receipt).encode("utf-8")
     cur = None
     rp = os.path.join(project, *RECEIPT.split("/"))
@@ -249,7 +258,8 @@ def main(argv=None):
     ap.add_argument("--project", default=os.getcwd())
     ap.add_argument("--allow-parent", action="store_true", help="when --project is inside an ancestor git repository, install at that repository's root")
     ap.add_argument("--apply", action="store_true", help="write the files (default: dry run)")
-    ap.add_argument("--force", action="store_true", help="overwrite existing files that differ")
+    ap.add_argument("--force", action="store_true", help="overwrite existing files that differ (with --uninstall: remove changed files too)")
+    ap.add_argument("--uninstall", action="store_true", help="remove the installed kit (dry run unless --apply)")
     ap.add_argument("--local-only", action="store_true", help="hidden mode without an overlay remote")
     ap.add_argument("--skip-sync", action="store_true", help="hidden mode: do not run agentic-sync init")
     a = ap.parse_args(argv)
@@ -262,6 +272,8 @@ def main(argv=None):
         if a.pin and a.kit_dir:
             raise Fail(2, "use either --kit-dir or --pin")
         src = RemoteSource(a.pin) if a.pin else LocalSource(a.kit_dir or os.path.dirname(os.path.abspath(__file__)))
+        if a.uninstall:
+            return run_uninstall(a.project, src, a.apply, a.force)
         project, plan = build_plan(a, src)
         print(f"writgate install ({'APPLY' if a.apply else 'dry run'}) into {project}")
         print(f"  tools={a.tools or '-'} modules={a.modules} shell={a.shell} visibility={a.visibility} policy={a.policy} source={src.label}")
